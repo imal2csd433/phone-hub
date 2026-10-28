@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phone Hub — Visual UI Mockups & User Guide</title>
+  <style>
+    :root { --bg: #0f172a; --panel: #1e293b; --border: #334155; --text: #f8fafc; --muted: #94a3b8; --blue: #2563eb; --sky: #38bdf8; --green: #22c55e; --amber: #f59e0b; }
+    * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+    body { margin: 0; background: var(--bg); color: var(--text); padding: 28px 18px; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    .top-bar { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 18px; margin-bottom: 28px; flex-wrap: wrap; gap: 12px; }
+    .pill { background: rgba(56,189,248,.15); color: var(--sky); border: 1px solid rgba(56,189,248,.35); padding: 5px 12px; border-radius: 99px; font-size: 12px; font-weight: 700; text-transform: uppercase; }
+    h1 { margin: 8px 0 4px; font-size: 26px; }
+    .sub { margin: 0; color: var(--muted); font-size: 14px; }
+    .btn-print { background: var(--sky); color: #0f172a; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 14px; }
+
+    /* Screen Mockups Grid */
+    .screens-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; margin-bottom: 32px; }
+    .screen-wrap { background: #0b1120; border: 1px solid var(--border); border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+    .screen-head { display: flex; justify-content: space-between; align-items: center; }
+    .screen-num { background: var(--blue); color: #fff; font-weight: 800; font-size: 12px; padding: 4px 10px; border-radius: 6px; }
+    .screen-title { font-size: 16px; font-weight: 700; color: #fff; }
+    .screen-desc { font-size: 13px; color: var(--muted); margin: 0; line-height: 1.45; }
+
+    /* Fake Browser / Phone Frame */
+    .mockup-frame { background: #f8fafc; color: #0f172a; border-radius: 12px; overflow: hidden; border: 2px solid #475569; box-shadow: 0 10px 25px rgba(0,0,0,.35); }
+    .browser-bar { background: #e2e8f0; padding: 8px 12px; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid #cbd5e1; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: #94a3b8; }
+    .dot.r { background: #ef4444; } .dot.y { background: #f59e0b; } .dot.g { background: #22c55e; }
+    .url-bar { background: #fff; color: #475569; font-size: 11px; padding: 3px 10px; border-radius: 4px; margin-left: 8px; flex: 1; font-family: monospace; }
+    .mockup-body { padding: 16px; font-size: 12.5px; }
+
+    /* Mock UI Components inside white screen */
+    .m-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; margin-bottom: 10px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+    .m-label { font-size: 10.5px; font-weight: 700; color: #64748b; display: block; margin-bottom: 3px; }
+    .m-input { width: 100%; padding: 7px 9px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px; background: #fff; color: #0f172a; margin-bottom: 8px; }
+    .m-input.ro { background: #f1f5f9; color: #475569; border-style: dashed; }
+    .m-btn { background: #2563eb; color: #fff; border: none; padding: 7px 12px; border-radius: 6px; font-size: 11.5px; font-weight: 600; display: inline-block; }
+    .m-btn.sec { background: #e2e8f0; color: #1e293b; }
+    .m-badge { background: #dbeafe; color: #1e40af; padding: 3px 8px; border-radius: 99px; font-size: 10.5px; font-weight: 700; }
+    .m-badge.ro { background: #fef3c7; color: #92400e; }
+    .m-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .m-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .m-sec { font-size: 11px; font-weight: 700; color: #2563eb; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin: 10px 0 6px; }
+
+    /* How-To Guide Section */
+    .guide-box { background: #0b1120; border: 1px solid var(--border); border-radius: 16px; padding: 24px; margin-bottom: 24px; }
+    .guide-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 16px; }
+    .guide-step { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+    .guide-step h4 { margin: 0 0 8px; color: var(--sky); font-size: 14px; }
+    .guide-step p { margin: 0; font-size: 12.5px; color: #cbd5e1; line-height: 1.5; }
+
+    @media (max-width: 900px) { .screens-grid, .guide-grid { grid-template-columns: 1fr; } }
+    @media print { body { background: #0f172a; padding: 0; } .no-print { display: none; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="top-bar">
+      <div>
+        <span class="pill">UI / UX Screen Walkthrough & User Guide</span>
+        <h1>Phone Hub — Application Screens & How It Works</h1>
+        <p class="sub">Visual preview of all 4 screens (Mobile & Desktop responsive) and step-by-step operating guide for management review.</p>
+      </div>
+      <div class="m-row no-print">
+        <button class="btn-print" onclick="window.print()">Save as PDF / Print</button>
+      </div>
+    </div>
+
+    <!-- 4 VISUAL SCREEN MOCKUPS -->
+    <div class="screens-grid">
+
+      <!-- SCREEN 1: LOGIN -->
+      <div class="screen-wrap">
+        <div class="screen-head">
+          <span class="screen-title">Screen 1: Role-Based Sign In</span>
+          <span class="screen-num">SCREEN 01</span>
+        </div>
+        <p class="screen-desc">Users log in from any smartphone or desktop browser. The system automatically detects their permission tier (<strong>Owner</strong>, <strong>Admin</strong>, or <strong>Viewer</strong>).</p>
+        <div class="mockup-frame">
+          <div class="browser-bar">
+            <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+            <span class="url-bar">https://phonehub.company.internal/login</span>
+          </div>
+          <div class="mockup-body" style="padding: 24px 40px;">
+            <div class="m-card" style="max-width: 300px; margin: 0 auto;">
+              <strong style="font-size:15px;display:block;margin-bottom:4px;">Phone Hub (IT Asset)</strong>
+              <span style="font-size:11px;color:#64748b;display:block;margin-bottom:12px;">Corporate Mobile Inventory Portal</span>
+              <label class="m-label">Username</label>
+              <div class="m-input">admin</div>
+              <label class="m-label">Password</label>
+              <div class="m-input">••••••••</div>
+              <div class="m-btn" style="width:100%;text-align:center;margin-top:4px;">Sign In →</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCREEN 2: INSTANT SEARCH DASHBOARD -->
+      <div class="screen-wrap">
+        <div class="screen-head">
+          <span class="screen-title">Screen 2: Instant SN & Phone Lookup</span>
+          <span class="screen-num">SCREEN 02</span>
+        </div>
+        <p class="screen-desc">Type a <strong>Serial Number (SN)</strong>, <strong>Phone Number</strong>, <strong>IMEI</strong>, or <strong>Employee Name</strong>. Results filter immediately as you type.</p>
+        <div class="mockup-frame">
+          <div class="browser-bar">
+            <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+            <span class="url-bar">https://phonehub.company.internal/devices</span>
+          </div>
+          <div class="mockup-body">
+            <div class="m-card">
+              <div class="m-row" style="margin-bottom:8px;">
+                <div><strong>Corporate Mobile Registry</strong> <span class="m-badge">admin (ADMIN)</span></div>
+                <div>
+                  <span class="m-btn">+ Add Device</span>
+                  <span class="m-btn sec">Print List</span>
+                </div>
+              </div>
+              <div class="m-input" style="margin:0;border-color:#2563eb;">🔍 081-234-5678  (or SN-8849201...)</div>
+            </div>
+            <div class="m-card" style="border-left: 4px solid #2563eb;">
+              <div class="m-row">
+                <div>
+                  <strong>iPhone 15 Pro</strong> — <span style="color:#2563eb;font-weight:700;">SN: SN-8849201</span>
+                  <div style="font-size:11px;color:#64748b;margin-top:3px;">SIM: 081-234-5678 | Custodian: Somchai B. (Sales) | 256GB</div>
+                </div>
+                <span class="m-badge">Active</span>
+              </div>
+            </div>
+            <div class="m-card">
+              <div class="m-row">
+                <div>
+                  <strong>Samsung Galaxy S24</strong> — <span style="color:#2563eb;font-weight:700;">SN: SN-7731904</span>
+                  <div style="font-size:11px;color:#64748b;margin-top:3px;">SIM: 089-998-1122 | Custodian: Nida K. (Logistics) | 128GB</div>
+                </div>
+                <span class="m-badge">Active</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCREEN 3: OWNER / ADMIN EDIT VIEW -->
+      <div class="screen-wrap">
+        <div class="screen-head">
+          <span class="screen-title">Screen 3: Device Details & Custom Topics (Admin/Owner)</span>
+          <span class="screen-num">SCREEN 03</span>
+        </div>
+        <p class="screen-desc"><strong>Owner & Admin</strong> can edit all fields, including categorized sections (Core Info, Custodian, and Additional Hardware Specs/Notes).</p>
+        <div class="mockup-frame">
+          <div class="browser-bar">
+            <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+            <span class="url-bar">https://phonehub.company.internal/devices/SN-8849201</span>
+          </div>
+          <div class="mockup-body">
+            <div class="m-card" style="margin:0;">
+              <div class="m-row">
+                <strong>Device Record: SN-8849201</strong>
+                <span class="m-badge">EDIT MODE (Owner / Admin)</span>
+              </div>
+              <div class="m-sec">1. Core Device Information</div>
+              <div class="m-grid">
+                <div><label class="m-label">Serial Number (SN) *</label><div class="m-input">SN-8849201</div></div>
+                <div><label class="m-label">SIM Phone Number</label><div class="m-input">081-234-5678</div></div>
+                <div><label class="m-label">IMEI</label><div class="m-input">359012345678901</div></div>
+                <div><label class="m-label">Model & Status</label><div class="m-input">iPhone 15 Pro — [Active ▾]</div></div>
+              </div>
+              <div class="m-sec">2. Custodian & Department</div>
+              <div class="m-grid">
+                <div><label class="m-label">Assigned Employee</label><div class="m-input">Somchai Boonpraken</div></div>
+                <div><label class="m-label">Department / Branch</label><div class="m-input">Sales — Bang Na Branch</div></div>
+              </div>
+              <div class="m-sec">3. Additional Specs & Custom Notes</div>
+              <div class="m-grid">
+                <div><label class="m-label">Color / Capacity</label><div class="m-input">Black / 256GB</div></div>
+                <div><label class="m-label">Issued Accessories</label><div class="m-input">USB-C Adapter, Protective Case</div></div>
+              </div>
+              <div class="m-row" style="margin-top:6px;">
+                <span class="m-btn">💾 Save Changes</span>
+                <span class="m-btn sec">🖨️ Print Handover Sheet</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCREEN 4: VIEWER READ-ONLY & PRINT SHEET -->
+      <div class="screen-wrap">
+        <div class="screen-head">
+          <span class="screen-title">Screen 4: Read-Only Mode (Viewer) & Print Output</span>
+          <span class="screen-num">SCREEN 04</span>
+        </div>
+        <p class="screen-desc"><strong>Standard Users (Viewers)</strong> have all inputs locked (`Read-Only`) to prevent accidental edits, and anyone can print a clean A4/PDF sheet.</p>
+        <div class="mockup-frame">
+          <div class="browser-bar">
+            <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+            <span class="url-bar">https://phonehub.company.internal/print-preview</span>
+          </div>
+          <div class="mockup-body">
+            <div class="m-card" style="margin:0;border:1px solid #0f172a;">
+              <div class="m-row" style="border-bottom:2px solid #0f172a;padding-bottom:6px;margin-bottom:8px;">
+                <div>
+                  <strong style="font-size:14px;">CORPORATE IT ASSET HANDOVER SHEET</strong>
+                  <div style="font-size:10px;color:#64748b;">Printed from Phone Hub • Read-Only Verified</div>
+                </div>
+                <span class="m-badge ro">🔒 VIEWER (READ-ONLY)</span>
+              </div>
+              <div class="m-grid">
+                <div><label class="m-label">Serial Number (SN)</label><div class="m-input ro">SN-8849201</div></div>
+                <div><label class="m-label">Phone Number</label><div class="m-input ro">081-234-5678</div></div>
+                <div><label class="m-label">IMEI</label><div class="m-input ro">359012345678901</div></div>
+                <div><label class="m-label">Custodian</label><div class="m-input ro">Somchai B. (Sales)</div></div>
+                <div><label class="m-label">Specs</label><div class="m-input ro">iPhone 15 Pro • Black • 256GB</div></div>
+                <div><label class="m-label">Accessories</label><div class="m-input ro">Charger, Case</div></div>
+              </div>
+              <div style="font-size:10.5px;color:#64748b;margin-top:6px;display:flex;justify-content:space-between;">
+                <span>Save button hidden for Viewer role</span>
+                <span><strong>[🖨️ Print / Export PDF]</strong></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- STEP-BY-STEP HOW TO USE GUIDE -->
+    <div class="guide-box">
+      <div class="m-row">
+        <h2 style="margin:0;font-size:20px;color:var(--sky);">How to Use — Step-by-Step Operating Guide</h2>
+        <span style="font-size:12px;color:var(--muted);">Works on iOS, Android, Windows & macOS</span>
+      </div>
+      <div class="guide-grid">
+        <div class="guide-step">
+          <h4>Step 1: Open & Sign In</h4>
+          <p>Open the web link on any smartphone or PC browser. Log in with your assigned account:<br>
+          • <strong>Owner / Admin:</strong> Full edit rights<br>
+          • <strong>Viewer:</strong> Search & View only</p>
+        </div>
+        <div class="guide-step">
+          <h4>Step 2: Search by SN or Phone</h4>
+          <p>In the top search bar, type the device's <strong>Serial Number (SN)</strong>, <strong>SIM Phone Number</strong>, or <strong>Employee Name</strong>. The matching device card appears instantly.</p>
+        </div>
+        <div class="guide-step">
+          <h4>Step 3: View or Edit Topics</h4>
+          <p>Tap the device card to open full details across 3 structured sections (Device Info, Custodian, Additional Specs/Notes). Admins/Owners can edit and click <strong>Save</strong>.</p>
+        </div>
+        <div class="guide-step">
+          <h4>Step 4: Print or Export PDF</h4>
+          <p>Tap <strong>"Print Handover Sheet"</strong> on any device record. The system strips away navigation buttons and formats a clean A4/PDF document ready for signing or filing.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

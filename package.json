@@ -1,0 +1,13 @@
+{
+  "name": "phone-hub",
+  "version": "1.0.0",
+  "description": "Enterprise Mobile Device Registry with TH/EN i18n, Photo Upload, Print Sheet, and RBAC",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node server.js --test"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  }
+}

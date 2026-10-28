@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phone Hub — Mobile Device Registry</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <style>
+    /* Industrial Ledger Design System (Swiss Hardware Index)
+       Palette: #EAE6DF (Ledger Stone), #FFFFFF (Sheet), #141413 (Carbon Ink), #0047AB (Cobalt Signal), #D4CFC7 (Rule) */
+    :root {
+      --bg: #EAE6DF;
+      --sheet: #FFFFFF;
+      --ink: #141413;
+      --muted: #5C5A54;
+      --cobalt: #0047AB;
+      --rule: #D4CFC7;
+      --rule-dark: #141413;
+      --ok-bg: #E3F2E6;
+      --ok-ink: #14532D;
+      --warn-bg: #FEF3C7;
+      --warn-ink: #78350F;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'IBM Plex Sans Thai', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 15px;
+      line-height: 1.5;
+      padding: 20px 14px 48px;
+    }
+    .mono { font-family: 'JetBrains Mono', monospace; letter-spacing: -0.02em; }
+    .shell { max-width: 940px; margin: 0 auto; }
+
+    /* Top utility masthead */
+    .masthead {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid var(--rule-dark);
+      padding-bottom: 12px;
+      margin-bottom: 20px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .brand { display: flex; align-items: baseline; gap: 12px; }
+    .brand h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.03em; }
+    .brand span { font-size: 13px; color: var(--muted); }
+
+    /* Sharp tactile buttons */
+    button, .file-label {
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 9px 14px;
+      border: 1.5px solid var(--rule-dark);
+      border-radius: 4px;
+      background: var(--sheet);
+      color: var(--ink);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: transform 80ms ease, background 120ms ease;
+    }
+    button:active { transform: translateY(1px); }
+    button.primary { background: var(--cobalt); color: #fff; border-color: var(--cobalt); }
+    button.lang-btn { font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 6px 10px; background: var(--ink); color: #fff; }
+
+    /* Ledger panels */
+    .panel {
+      background: var(--sheet);
+      border: 1.5px solid var(--rule-dark);
+      border-radius: 4px;
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+
+    input, select, textarea {
+      font-family: inherit;
+      font-size: 15px;
+      width: 100%;
+      padding: 9px 11px;
+      border: 1.5px solid var(--rule);
+      border-radius: 4px;
+      background: #fff;
+      color: var(--ink);
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--cobalt);
+    }
+    input:disabled, select:disabled, textarea:disabled {
+      background: #F4F2EE;
+      color: var(--ink);
+      border-color: var(--rule);
+      opacity: 1;
+    }
+    label {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--muted);
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    /* Search bar */
+    .search-box {
+      position: relative;
+      margin-top: 12px;
+    }
+    .search-box input {
+      border: 1.5px solid var(--rule-dark);
+      padding: 12px 14px;
+      font-size: 15.5px;
+    }
+
+    /* Spec table grid */
+    .spec-header {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--ink);
+      border-bottom: 1.5px solid var(--rule-dark);
+      padding-bottom: 6px;
+      margin: 20px 0 12px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 12px;
+    }
+
+    /* Device index row */
+    .device-item {
+      background: var(--sheet);
+      border: 1.5px solid var(--rule-dark);
+      border-radius: 4px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      display: grid;
+      grid-template-columns: 56px 1fr auto;
+      gap: 14px;
+      align-items: center;
+    }
+    .device-item:hover { border-color: var(--cobalt); }
+    .thumb {
+      width: 56px;
+      height: 56px;
+      border: 1px solid var(--rule);
+      border-radius: 4px;
+      object-fit: cover;
+      background: #F4F2EE;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: var(--muted);
+      text-align: center;
+    }
+    .tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      padding: 3px 8px;
+      border-radius: 3px;
+      border: 1px solid var(--rule-dark);
+      background: var(--ok-bg);
+      color: var(--ok-ink);
+      font-weight: 600;
+    }
+    .tag.spare, .tag.repair { background: var(--warn-bg); color: var(--warn-ink); }
+
+    /* Photo attachment area at bottom */
+    .photo-zone {
+      margin-top: 14px;
+      border: 1.5px dashed var(--rule-dark);
+      border-radius: 4px;
+      padding: 14px;
+      background: #FAF9F6;
+    }
+    .photo-preview {
+      max-width: 100%;
+      max-height: 300px;
+      border: 1px solid var(--rule-dark);
+      border-radius: 4px;
+      margin-top: 10px;
+      display: block;
+    }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 600px) {
+      .device-item { grid-template-columns: 48px 1fr; }
+      .device-item .tag { grid-column: 2; justify-self: start; }
+    }
+
+    @media print {
+      body { background: #fff; padding: 0; }
+      .no-print { display: none !important; }
+      .panel { border: 1.5px solid #000; page-break-inside: avoid; }
+      input, select, textarea { border: none; padding: 0; font-weight: 600; appearance: none; background: transparent !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <!-- Top Masthead with TH/EN Language Switcher -->
+    <header class="masthead">
+      <div class="brand">
+        <h1>PHONE HUB</h1>
+        <span id="t_subtitle">ระบบฐานข้อมูลโทรศัพท์มือถือองค์กร</span>
+      </div>
+      <div class="row no-print">
+        <button class="lang-btn" onclick="toggleLang()" id="langBtn">TH / EN</button>
+      </div>
+    </header>
+
+    <!-- Login View -->
+    <section id="loginBox" class="panel" style="max-width:420px;margin:28px auto;">
+      <h2 id="t_login_title" style="margin:0 0 6px;font-size:18px;">เข้าสู่ระบบจัดการข้อมูลเครื่อง</h2>
+      <p id="t_login_hint" style="font-size:13px;color:var(--muted);margin:0 0 12px;">เลือกสิทธิ์ทดสอบ หรือกรอกชื่อผู้ใช้:</p>
+      <div class="row" style="margin-bottom:14px;justify-content:flex-start;">
+        <button type="button" onclick="fillDemo('owner','owner123')">Owner</button>
+        <button type="button" onclick="fillDemo('admin','admin123')">Admin</button>
+        <button type="button" onclick="fillDemo('viewer','viewer123')">Viewer</button>
+      </div>
+      <div style="margin-bottom:10px">
+        <label id="t_user_lbl">ชื่อผู้ใช้ (Username)</label>
+        <input id="userIn" value="owner" class="mono">
+      </div>
+      <div style="margin-bottom:14px">
+        <label id="t_pass_lbl">รหัสผ่านเข้าแอป (Password)</label>
+        <input id="passIn" type="password" value="owner123" class="mono">
+      </div>
+      <button class="primary" onclick="login()" style="width:100%;justify-content:center;" id="t_signin_btn">เข้าสู่ระบบ</button>
+      <p id="loginErr" style="color:#b91c1c;font-size:13px;margin:8px 0 0;"></p>
+    </section>
+
+    <!-- Main Workspace -->
+    <main id="appBox" class="hidden">
+      <div class="panel no-print">
+        <div class="row">
+          <div>
+            <strong id="t_registry_title" style="font-size:17px">รายการเครื่องโทรศัพท์ทั้งหมด</strong>
+            <span id="roleBadge" class="tag" style="margin-left:8px;"></span>
+          </div>
+          <div class="row">
+            <button id="addBtn" class="primary hidden" onclick="openForm()">+ <span id="t_add_btn">เพิ่มเครื่องใหม่</span></button>
+            <button onclick="window.print()" id="t_print_list_btn">พิมพ์รายการ</button>
+            <button onclick="logout()" id="t_logout_btn">ออก</button>
+          </div>
+        </div>
+        <div class="search-box">
+          <input id="searchIn" oninput="loadDevices()">
+        </div>
+      </div>
+
+      <!-- Device Detail & Edit Sheet -->
+      <section id="detailCard" class="panel hidden">
+        <div class="row" style="border-bottom:2px solid var(--rule-dark);padding-bottom:10px;">
+          <div>
+            <h3 id="formTitle" style="margin:0;font-size:18px;" class="mono"></h3>
+            <span id="modeSub" style="font-size:12.5px;color:var(--muted);"></span>
+          </div>
+          <div class="row no-print">
+            <button onclick="window.print()" id="t_print_sheet_btn">พิมพ์ข้อมูลเครื่องนี้</button>
+            <button onclick="closeForm()" id="t_close_btn">ปิดหน้าต่าง</button>
+          </div>
+        </div>
+
+        <div class="spec-header"><span id="t_sec1">ข้อมูลหมายเลขเครื่องและซิมการ์ด</span><span class="mono">01</span></div>
+        <div class="grid">
+          <div><label id="t_sn">หมายเลขเครื่อง (SN) *</label><input id="f_sn" class="mono"></div>
+          <div><label id="t_imei">หมายเลข IMEI</label><input id="f_imei" class="mono"></div>
+          <div><label id="t_phone">เบอร์โทรศัพท์ (Phone Number)</label><input id="f_phone" class="mono"></div>
+          <div><label id="t_model">รุ่นและยี่ห้อ (Model) *</label><input id="f_model"></div>
+          <div>
+            <label id="t_status">สถานะเครื่อง (Status)</label>
+            <select id="f_status">
+              <option value="Active">Active</option>
+              <option value="Spare">Spare</option>
+              <option value="Repair">Repair</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="spec-header"><span id="t_sec2">ผู้ถือครองและหน่วยงาน</span><span class="mono">02</span></div>
+        <div class="grid">
+          <div><label id="t_holder">ชื่อผู้ถือครอง (Full Name)</label><input id="f_holder"></div>
+          <div><label id="t_dept">แผนก / สาขา (Department / Branch)</label><input id="f_department"></div>
+        </div>
+
+        <div class="spec-header"><span id="t_sec3">รายละเอียดเพิ่มเติม</span><span class="mono">03</span></div>
+        <div class="grid">
+          <div><label id="t_color">สีตัวเครื่อง (Color)</label><input id="f_color"></div>
+          <div><label id="t_cap">ความจุ (Capacity)</label><input id="f_capacity"></div>
+          <div><label id="t_acc">อุปกรณ์เสริม (Accessories)</label><input id="f_accessories"></div>
+        </div>
+        <div style="margin-top:12px">
+          <label id="t_notes">บันทึกเพิ่มเติม (Notes)</label>
+          <textarea id="f_notes" rows="2"></textarea>
+        </div>
+
+        <!-- Bottom Image Upload & Display Section -->
+        <div class="spec-header"><span id="t_sec4">รูปภาพตัวเครื่อง / เอกสารแนบ</span><span class="mono">04</span></div>
+        <div class="photo-zone">
+          <div class="row no-print" id="photoControls">
+            <label class="file-label" style="margin:0;color:var(--ink);">
+              <span id="t_upload_btn">เลือกรูปภาพ / ถ่ายรูปจากมือถือ</span>
+              <input id="f_photo_in" type="file" accept="image/*" style="display:none" onchange="handlePhoto(event)">
+            </label>
+            <button type="button" id="clearPhotoBtn" onclick="clearPhoto()" class="hidden" style="font-size:12.5px;padding:6px 10px;">ลบรูปภาพ</button>
+          </div>
+          <div id="noPhotoText" style="font-size:13px;color:var(--muted);margin-top:6px;">ยังไม่มีรูปภาพแนบ</div>
+          <img id="photoPreview" class="photo-preview hidden" alt="Device Photo">
+        </div>
+
+        <p id="formErr" style="color:#b91c1c;font-size:13.5px;font-weight:600;margin:10px 0 0;"></p>
+        <div class="row no-print" style="margin-top:16px">
+          <button id="saveBtn" class="primary" onclick="saveDevice()" style="width:100%;justify-content:center;padding:12px;"></button>
+        </div>
+      </section>
+
+      <!-- Device List -->
+      <section id="listBox"></section>
+    </main>
+  </div>
+
+  <script>
+    let lang = 'th';
+    let auth = null;
+    let currentId = null;
+    let currentPhotoData = '';
+    const fields = ['sn','imei','phone','model','holder','department','status','color','capacity','accessories','notes'];
+    const TEXT_CHECK_FIELDS = ['model','holder','department','color','capacity','accessories','notes'];
+    const BLOCKED_KEYWORDS = /\b(password|passcode|pin|cvv|otp|tac|bank|atm|debit|credit\s*card|saving|account\s*number|ktb|kbank|scb|bbl|security\s*question)\b|(รหัสผ่าน|รหัสกดเงิน|คำถามความปลอดภัย|เลขบัญชี|บัตรเอทีเอ็ม|ธนาคาร)/i;
+
+    const I18N = {
+      th: {
+        subtitle: 'ระบบฐานข้อมูลโทรศัพท์มือถือองค์กร',
+        login_title: 'เข้าสู่ระบบจัดการข้อมูลเครื่อง',
+        login_hint: 'เลือกสิทธิ์ทดสอบ หรือกรอกชื่อผู้ใช้:',
+        user_lbl: 'ชื่อผู้ใช้ (Username)',
+        pass_lbl: 'รหัสผ่านเข้าแอป (Password)',
+        signin_btn: 'เข้าสู่ระบบ',
+        registry_title: 'รายการเครื่องโทรศัพท์ทั้งหมด',
+        add_btn: 'เพิ่มเครื่องใหม่',
+        print_list_btn: 'พิมพ์รายการ',
+        logout_btn: 'ออกจากระบบ',
+        search_ph: 'ค้นหาด้วย เลข SN, เบอร์โทรศัพท์, IMEI หรือ ชื่อผู้ถือครอง...',
+        print_sheet_btn: 'พิมพ์ข้อมูลเครื่องนี้',
+        close_btn: 'ปิดหน้าต่าง',
+        sec1: 'ข้อมูลหมายเลขเครื่องและซิมการ์ด',
+        sec2: 'ผู้ถือครองและหน่วยงาน',
+        sec3: 'รายละเอียดเพิ่มเติม',
+        sec4: 'รูปภาพตัวเครื่อง (ด้านล่างสุด)',
+        sn: 'หมายเลขเครื่อง (SN) *',
+        imei: 'หมายเลข IMEI (ตัวเลขใส่ได้ไม่จำกัด)',
+        phone: 'เบอร์โทรศัพท์ (Phone Number)',
+        model: 'รุ่นและยี่ห้อ (Model) *',
+        status: 'สถานะเครื่อง (Status)',
+        holder: 'ชื่อผู้ถือครอง (Full Name)',
+        dept: 'แผนก / สาขา (Department / Branch)',
+        color: 'สีตัวเครื่อง (Color)',
+        cap: 'ความจุ (Capacity)',
+        acc: 'อุปกรณ์เสริม (Accessories)',
+        notes: 'บันทึกเพิ่มเติม (Notes)',
+        upload_btn: '+ เลือกรูปภาพ / ถ่ายรูปจากสมาร์ทโฟน',
+        clear_photo: 'ลบรูปภาพ',
+        no_photo: 'ยังไม่มีรูปภาพแนบ',
+        save_btn: 'บันทึกข้อมูลเครื่อง',
+        edit_mode: 'สิทธิ์ Owner / Admin — แก้ไขข้อมูลและอัปโหลดรูปภาพได้',
+        ro_mode: 'สิทธิ์ผู้ใช้ทั่วไป (Viewer) — ดูและสั่งพิมพ์ได้อย่างเดียว',
+        new_device: 'เพิ่มข้อมูลเครื่องใหม่',
+        empty: 'ไม่พบข้อมูลเครื่องที่ค้นหา',
+        lbl_phone: 'เบอร์โทร',
+        lbl_holder: 'ผู้ถือครอง'
+      },
+      en: {
+        subtitle: 'Enterprise Mobile Device Registry',
+        login_title: 'Sign in to Device Registry',
+        login_hint: 'Select a demo role or enter your username:',
+        user_lbl: 'Username',
+        pass_lbl: 'Password',
+        signin_btn: 'Sign in',
+        registry_title: 'Registered Mobile Devices',
+        add_btn: 'Add device',
+        print_list_btn: 'Print list',
+        logout_btn: 'Sign out',
+        search_ph: 'Search by Serial Number (SN), Phone Number, IMEI, or Holder...',
+        print_sheet_btn: 'Print device sheet',
+        close_btn: 'Close',
+        sec1: 'Device Identification & SIM',
+        sec2: 'Assigned Holder & Branch',
+        sec3: 'Hardware Specifications & Notes',
+        sec4: 'Device Photo Attachment',
+        sn: 'Serial Number (SN) *',
+        imei: 'IMEI Number',
+        phone: 'Phone Number (SIM)',
+        model: 'Device Model *',
+        status: 'Status',
+        holder: 'Full Name (Holder)',
+        dept: 'Department / Branch',
+        color: 'Color',
+        cap: 'Storage Capacity',
+        acc: 'Accessories',
+        notes: 'Additional Notes',
+        upload_btn: '+ Upload or take photo from smartphone',
+        clear_photo: 'Remove photo',
+        no_photo: 'No photo attached',
+        save_btn: 'Save device record',
+        edit_mode: 'Owner / Admin access — Full edit & photo upload enabled',
+        ro_mode: 'Viewer access — Read-only & print mode',
+        new_device: 'Register new device',
+        empty: 'No matching devices found',
+        lbl_phone: 'Phone',
+        lbl_holder: 'Holder'
+      }
+    };
+
+    function applyLang() {
+      const t = I18N[lang];
+      document.documentElement.lang = lang;
+      langBtn.textContent = lang === 'th' ? 'เปลี่ยนภาษา: EN' : 'Language: TH';
+      t_subtitle.textContent = t.subtitle;
+      t_login_title.textContent = t.login_title;
+      t_login_hint.textContent = t.login_hint;
+      t_user_lbl.textContent = t.user_lbl;
+      t_pass_lbl.textContent = t.pass_lbl;
+      t_signin_btn.textContent = t.signin_btn;
+      t_registry_title.textContent = t.registry_title;
+      t_add_btn.textContent = t.add_btn;
+      t_print_list_btn.textContent = t.print_list_btn;
+      t_logout_btn.textContent = t.logout_btn;
+      searchIn.placeholder = t.search_ph;
+      t_print_sheet_btn.textContent = t.print_sheet_btn;
+      t_close_btn.textContent = t.close_btn;
+      t_sec1.textContent = t.sec1;
+      t_sec2.textContent = t.sec2;
+      t_sec3.textContent = t.sec3;
+      t_sec4.textContent = t.sec4;
+      t_sn.textContent = t.sn;
+      t_imei.textContent = t.imei;
+      t_phone.textContent = t.phone;
+      t_model.textContent = t.model;
+      t_status.textContent = t.status;
+      t_holder.textContent = t.holder;
+      t_dept.textContent = t.dept;
+      t_color.textContent = t.color;
+      t_cap.textContent = t.cap;
+      t_acc.textContent = t.acc;
+      t_notes.textContent = t.notes;
+      t_upload_btn.textContent = t.upload_btn;
+      clearPhotoBtn.textContent = t.clear_photo;
+      noPhotoText.textContent = t.no_photo;
+      saveBtn.textContent = t.save_btn;
+      if (auth) {
+        const canEdit = auth.role === 'owner' || auth.role === 'admin';
+        modeSub.textContent = canEdit ? t.edit_mode : t.ro_mode;
+        loadDevices();
+      }
+    }
+
+    function toggleLang() {
+      lang = lang === 'th' ? 'en' : 'th';
+      applyLang();
+    }
+
+    // ponytail: localStorage fallback when previewed without Node backend
+    const DEMO_USERS = {
+      owner: { pass: 'owner123', role: 'owner' },
+      admin: { pass: 'admin123', role: 'admin' },
+      viewer: { pass: 'viewer123', role: 'viewer' }
+    };
+    const INITIAL_DEVICES = [
+      { id: 1, sn: 'SN-8849201', imei: '359012345678901', phone: '081-234-5678', model: 'iPhone 15 Pro', holder: 'Somchai Boonpraken', department: 'Sales — Bang Na', status: 'Active', color: 'Black', capacity: '256GB', accessories: 'USB-C Adapter, Case', notes: 'Issued Jan 2026', photo: '' },
+      { id: 2, sn: 'SN-7731904', imei: '352998112233445', phone: '089-998-1122', model: 'Samsung Galaxy S24', holder: 'Nida K.', department: 'Logistics', status: 'Active', color: 'Gray', capacity: '128GB', accessories: 'Cable, Protective Film', notes: 'Sim card roaming enabled', photo: '' }
+    ];
+
+    function getLocalDevices() {
+      const raw = localStorage.getItem('phone_hub_devices_v2');
+      if (!raw) { localStorage.setItem('phone_hub_devices_v2', JSON.stringify(INITIAL_DEVICES)); return INITIAL_DEVICES; }
+      return JSON.parse(raw);
+    }
+
+    function fillDemo(u, p) { userIn.value = u; passIn.value = p; loginErr.textContent = ''; }
+
+    async function login() {
+      const u = userIn.value.trim();
+      const p = passIn.value;
+      try {
+        const r = await fetch('/api/login', { method: 'POST', body: JSON.stringify({ username: u, password: p }) });
+        const data = await r.json();
+        if (!r.ok) { loginErr.textContent = data.error; return; }
+        auth = data;
+      } catch {
+        if (!DEMO_USERS[u] || DEMO_USERS[u].pass !== p) { loginErr.textContent = 'Invalid username or password'; return; }
+        auth = { token: 'local', username: u, role: DEMO_USERS[u].role };
+      }
+      loginBox.classList.add('hidden');
+      appBox.classList.remove('hidden');
+      roleBadge.textContent = `${auth.username.toUpperCase()} (${auth.role.toUpperCase()})`;
+      const canEdit = auth.role === 'owner' || auth.role === 'admin';
+      addBtn.classList.toggle('hidden', !canEdit);
+      saveBtn.classList.toggle('hidden', !canEdit);
+      photoControls.classList.toggle('hidden', !canEdit);
+      applyLang();
+    }
+
+    function logout() {
+      auth = null;
+      detailCard.classList.add('hidden');
+      appBox.classList.add('hidden');
+      loginBox.classList.remove('hidden');
+    }
+
+    function renderPhotoState(dataUrl) {
+      currentPhotoData = dataUrl || '';
+      const canEdit = auth && (auth.role === 'owner' || auth.role === 'admin');
+      if (currentPhotoData) {
+        photoPreview.src = currentPhotoData;
+        photoPreview.classList.remove('hidden');
+        noPhotoText.classList.add('hidden');
+        clearPhotoBtn.classList.toggle('hidden', !canEdit);
+      } else {
+        photoPreview.src = '';
+        photoPreview.classList.add('hidden');
+        noPhotoText.classList.remove('hidden');
+        clearPhotoBtn.classList.add('hidden');
+      }
+    }
+
+    function handlePhoto(e) {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      // Compress via canvas so smartphone photos fit smoothly in SQLite / localStorage
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = new Image();
+        img.onload = () => {
+          const maxW = 900;
+          const scale = img.width > maxW ? maxW / img.width : 1;
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          renderPhotoState(canvas.toDataURL('image/jpeg', 0.8));
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function clearPhoto() {
+      f_photo_in.value = '';
+      renderPhotoState('');
+    }
+
+    async function loadDevices() {
+      const t = I18N[lang];
+      const q = (searchIn.value || '').trim().toLowerCase();
+      let rows = [];
+      try {
+        const r = await fetch(`/api/devices?q=${encodeURIComponent(q)}`, { headers: { Authorization: `Bearer ${auth.token}` } });
+        rows = await r.json();
+      } catch {
+        rows = getLocalDevices().filter(d =>
+          !q || [d.sn, d.phone, d.imei, d.holder, d.model, d.department].some(v => String(v || '').toLowerCase().includes(q))
+        );
+      }
+      listBox.innerHTML = rows.map(d => `
+        <article class="device-item" onclick='viewDevice(${JSON.stringify(d).replace(/'/g, "&#39;")})'>
+          ${d.photo ? `<img class="thumb" src="${d.photo}" alt="thumb">` : `<div class="thumb mono">NO<br>IMG</div>`}
+          <div>
+            <div style="font-weight:700;font-size:16px;">${d.model} <span class="mono" style="color:var(--cobalt);margin-left:6px;">${d.sn}</span></div>
+            <div style="font-size:13.5px;color:var(--muted);margin-top:2px;">
+              ${t.lbl_phone}: <strong class="mono" style="color:var(--ink)">${d.phone || '-'}</strong> &nbsp;|&nbsp;
+              IMEI: <span class="mono">${d.imei || '-'}</span> &nbsp;|&nbsp;
+              ${t.lbl_holder}: <strong>${d.holder || '-'}</strong> (${d.department || '-'})
+            </div>
+          </div>
+          <span class="tag ${String(d.status).toLowerCase()}">${d.status}</span>
+        </article>
+      `).join('') || `<div class="panel">${t.empty}</div>`;
+    }
+
+    function viewDevice(d) {
+      const t = I18N[lang];
+      currentId = d.id;
+      const canEdit = auth.role === 'owner' || auth.role === 'admin';
+      formTitle.textContent = `SN: ${d.sn}`;
+      modeSub.textContent = canEdit ? t.edit_mode : t.ro_mode;
+      fields.forEach(k => {
+        const el = document.getElementById('f_' + k);
+        el.value = d[k] || '';
+        el.disabled = !canEdit;
+      });
+      renderPhotoState(d.photo || '');
+      formErr.textContent = '';
+      detailCard.classList.remove('hidden');
+      detailCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function openForm() {
+      const t = I18N[lang];
+      currentId = null;
+      formTitle.textContent = t.new_device;
+      modeSub.textContent = t.edit_mode;
+      fields.forEach(k => {
+        const el = document.getElementById('f_' + k);
+        el.value = k === 'status' ? 'Active' : '';
+        el.disabled = false;
+      });
+      renderPhotoState('');
+      formErr.textContent = '';
+      detailCard.classList.remove('hidden');
+    }
+
+    function closeForm() { detailCard.classList.add('hidden'); }
+
+    async function saveDevice() {
+      const payload = { photo: currentPhotoData };
+      fields.forEach(k => payload[k] = document.getElementById('f_' + k).value.trim());
+      if (!payload.sn || !payload.model) {
+        formErr.textContent = lang === 'th' ? 'กรุณากรอกหมายเลข SN และรุ่นตัวเครื่อง' : 'Serial Number (SN) and Model are required';
+        return;
+      }
+      for (const k of TEXT_CHECK_FIELDS) {
+        if (BLOCKED_KEYWORDS.test(payload[k])) {
+          formErr.textContent = lang === 'th'
+            ? `พบคำที่ระบบจำกัดในช่อง "${k}" (ห้ามระบุรหัสผ่านหรือชื่อธนาคาร)`
+            : `Restricted keyword in "${k}" (no passwords or banking terms)`;
+          return;
+        }
+      }
+      try {
+        const url = currentId ? `/api/devices/${currentId}` : '/api/devices';
+        const method = currentId ? 'PUT' : 'POST';
+        const r = await fetch(url, { method, headers: { Authorization: `Bearer ${auth.token}` }, body: JSON.stringify(payload) });
+        const res = await r.json();
+        if (!r.ok) { formErr.textContent = res.error; return; }
+      } catch {
+        const list = getLocalDevices();
+        if (currentId) {
+          const idx = list.findIndex(x => x.id === currentId);
+          if (idx !== -1) list[idx] = { ...list[idx], ...payload };
+        } else {
+          list.unshift({ id: Date.now(), ...payload });
+        }
+        localStorage.setItem('phone_hub_devices_v2', JSON.stringify(list));
+      }
+      closeForm();
+      loadDevices();
+    }
+
+    applyLang();
+  </script>
+</body>
+</html>
