@@ -253,6 +253,7 @@
           </div>
           <div class="row">
             <button id="addBtn" class="primary hidden" onclick="openForm()">+ <span id="t_add_btn">เพิ่มเครื่องใหม่</span></button>
+            <button id="usersBtn" class="hidden" onclick="toggleUsersPanel()"><span id="t_users_btn">จัดการบัญชีผู้ใช้</span></button>
             <button onclick="window.print()" id="t_print_list_btn">พิมพ์รายการ</button>
             <button onclick="logout()" id="t_logout_btn">ออก</button>
           </div>
@@ -261,6 +262,29 @@
           <input id="searchIn" oninput="loadDevices()">
         </div>
       </div>
+
+      <!-- Account Management Panel (Owner / Admin) -->
+      <section id="usersCard" class="panel hidden no-print">
+        <div class="row" style="border-bottom:2px solid var(--rule-dark);padding-bottom:10px;margin-bottom:12px;">
+          <strong id="t_users_title" style="font-size:17px;">สร้างและจัดการบัญชีผู้ใช้งาน (Account Management)</strong>
+          <button onclick="toggleUsersPanel()">✕</button>
+        </div>
+        <div class="grid" style="align-items:end;">
+          <div><label id="t_new_user">ชื่อผู้ใช้ใหม่ (Username)</label><input id="u_name" class="mono" placeholder="เช่น staff01"></div>
+          <div><label id="t_new_pass">รหัสผ่าน (Password)</label><input id="u_pass" class="mono" placeholder="อย่างน้อย 4 ตัวอักษร"></div>
+          <div>
+            <label id="t_new_role">ระดับสิทธิ์ (Role)</label>
+            <select id="u_role">
+              <option value="viewer">Viewer (ดูและพิมพ์อย่างเดียว)</option>
+              <option value="admin">Admin (เพิ่ม/แก้ไขข้อมูลได้)</option>
+              <option value="owner">Owner (เจ้าของระบบ)</option>
+            </select>
+          </div>
+          <div><button class="primary" onclick="saveUser()" style="width:100%;justify-content:center;" id="t_create_user_btn">+ บันทึกบัญชี</button></div>
+        </div>
+        <p id="userErr" style="color:#b91c1c;font-size:13px;margin:6px 0;"></p>
+        <div id="usersList" style="margin-top:12px;"></div>
+      </section>
 
       <!-- Device Detail & Edit Sheet -->
       <section id="detailCard" class="panel hidden">
@@ -509,9 +533,73 @@
       roleBadge.textContent = `${auth.username.toUpperCase()} (${auth.role.toUpperCase()})`;
       const canEdit = auth.role === 'owner' || auth.role === 'admin';
       addBtn.classList.toggle('hidden', !canEdit);
+      usersBtn.classList.toggle('hidden', !canEdit);
       saveBtn.classList.toggle('hidden', !canEdit);
       photoControls.classList.toggle('hidden', !canEdit);
       applyLang();
+    }
+
+    function getLocalUsers() {
+      const raw = localStorage.getItem('phone_hub_users_v2');
+      if (!raw) { localStorage.setItem('phone_hub_users_v2', JSON.stringify(DEMO_USERS)); return { ...DEMO_USERS }; }
+      return JSON.parse(raw);
+    }
+
+    function toggleUsersPanel() {
+      usersCard.classList.toggle('hidden');
+      if (!usersCard.classList.contains('hidden')) loadUsers();
+    }
+
+    async function loadUsers() {
+      let list = [];
+      try {
+        const r = await fetch('/api/users', { headers: { Authorization: `Bearer ${auth.token}` } });
+        list = await r.json();
+      } catch {
+        const map = getLocalUsers();
+        list = Object.keys(map).map(k => ({ username: k, role: map[k].role }));
+      }
+      usersList.innerHTML = list.map(u => `
+        <div class="row" style="padding:8px 10px;border:1px solid var(--rule);border-radius:4px;margin-bottom:6px;">
+          <div><strong class="mono">${u.username}</strong> — <span class="tag">${u.role.toUpperCase()}</span></div>
+          ${(u.username !== 'owner' && u.username !== auth.username) ? `<button onclick="deleteUser('${u.username}')" style="padding:4px 8px;font-size:12px;">ลบ / Delete</button>` : ''}
+        </div>
+      `).join('');
+    }
+
+    async function saveUser() {
+      const username = u_name.value.trim().toLowerCase();
+      const password = u_pass.value;
+      const role = u_role.value;
+      if (!username || password.length < 4) { userErr.textContent = 'กรุณากรอกชื่อผู้ใช้ และรหัสผ่านอย่างน้อย 4 ตัวอักษร'; return; }
+      try {
+        const r = await fetch('/api/users', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${auth.token}` },
+          body: JSON.stringify({ username, password, role })
+        });
+        const res = await r.json();
+        if (!r.ok) { userErr.textContent = res.error; return; }
+      } catch {
+        const map = getLocalUsers();
+        map[username] = { pass: password, role };
+        localStorage.setItem('phone_hub_users_v2', JSON.stringify(map));
+        DEMO_USERS[username] = { pass: password, role };
+      }
+      u_name.value = ''; u_pass.value = ''; userErr.textContent = '';
+      loadUsers();
+    }
+
+    async function deleteUser(username) {
+      try {
+        await fetch(`/api/users/${encodeURIComponent(username)}`, { method: 'DELETE', headers: { Authorization: `Bearer ${auth.token}` } });
+      } catch {
+        const map = getLocalUsers();
+        delete map[username];
+        localStorage.setItem('phone_hub_users_v2', JSON.stringify(map));
+        delete DEMO_USERS[username];
+      }
+      loadUsers();
     }
 
     function logout() {

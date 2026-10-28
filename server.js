@@ -30,7 +30,6 @@ db.exec(`
   );
 `);
 
-// Add photo column if upgrading existing table
 try { db.exec(`ALTER TABLE devices ADD COLUMN photo TEXT DEFAULT ''`); } catch {}
 
 const hash = (pw) => crypto.scryptSync(pw, 'phone-hub-salt', 32).toString('hex');
@@ -53,7 +52,6 @@ const sessions = new Map();
 
 const ALLOWED_FIELDS = ['sn', 'imei', 'phone', 'model', 'holder', 'department', 'status', 'color', 'capacity', 'accessories', 'notes', 'photo'];
 const TEXT_CHECK_FIELDS = ['model', 'holder', 'department', 'color', 'capacity', 'accessories', 'notes'];
-// Block only explicit banking/credential keywords in text fields; numeric fields (SN/IMEI/Phone) are unrestricted
 const BLOCKED_KEYWORDS = /\b(password|passcode|pin|cvv|otp|tac|bank|atm|debit|credit\s*card|saving|account\s*number|ktb|kbank|scb|bbl|security\s*question)\b|(รหัสผ่าน|รหัสกดเงิน|คำถามความปลอดภัย|เลขบัญชี|บัตรเอทีเอ็ม|ธนาคาร)/i;
 
 function validatePayload(data) {
@@ -74,7 +72,6 @@ function validatePayload(data) {
 
 if (process.argv.includes('--test')) {
   const assert = require('node:assert/strict');
-  // 16-digit numbers in SN/IMEI/Phone must pass without false-positive
   assert.equal(validatePayload({ sn: '1234567890123456', imei: '3590123456789012', phone: '0891234567', model: 'iPhone 15', notes: 'Normal note 1234567890123456' }), null);
   assert.notEqual(validatePayload({ sn: '', model: 'Pixel 9' }), null);
   assert.notEqual(validatePayload({ sn: 'SN2', model: 'Pixel 9', notes: 'my bank account is here' }), null);
@@ -124,6 +121,35 @@ const server = http.createServer(async (req, res) => {
   const user = getAuth(req);
   if (!user) return send(401, { error: 'Unauthorized' });
 
+  const canEdit = user.role === 'owner' || user.role === 'admin';
+
+  // User Account Management API (Owner & Admin only)
+  if (req.method === 'GET' && url.pathname === '/api/users') {
+    if (!canEdit) return send(403, { error: 'Forbidden' });
+    const rows = db.prepare('SELECT username, role FROM users ORDER BY role, username').all();
+    return send(200, rows);
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/users') {
+    if (!canEdit) return send(403, { error: 'Forbidden' });
+    const { username, password, role } = await readJson(req);
+    const u = String(username || '').trim().toLowerCase();
+    const p = String(password || '');
+    const r = ['owner', 'admin', 'viewer'].includes(role) ? role : 'viewer';
+    if (!u || p.length < 4) return send(400, { error: 'Username required and password min 4 chars' });
+    if (r === 'owner' && user.role !== 'owner') return send(403, { error: 'Only Owner can create Owner accounts' });
+    db.prepare('INSERT OR REPLACE INTO users (username, password_hash, role) VALUES (?, ?, ?)').run(u, hash(p), r);
+    return send(201, { ok: true });
+  }
+
+  if (req.method === 'DELETE' && url.pathname.startsWith('/api/users/')) {
+    if (!canEdit) return send(403, { error: 'Forbidden' });
+    const target = decodeURIComponent(url.pathname.split('/').pop());
+    if (target === 'owner' || target === user.username) return send(400, { error: 'Cannot delete primary owner or yourself' });
+    db.prepare('DELETE FROM users WHERE username = ?').run(target);
+    return send(200, { ok: true });
+  }
+
   if (req.method === 'GET' && url.pathname === '/api/devices') {
     const q = `%${(url.searchParams.get('q') || '').trim()}%`;
     const rows = db.prepare(`
@@ -133,8 +159,6 @@ const server = http.createServer(async (req, res) => {
     `).all(q, q, q, q, q);
     return send(200, rows);
   }
-
-  const canEdit = user.role === 'owner' || user.role === 'admin';
 
   if (req.method === 'POST' && url.pathname === '/api/devices') {
     if (!canEdit) return send(403, { error: 'Forbidden: Viewer cannot create' });
