@@ -252,8 +252,8 @@
             <span id="roleBadge" class="tag" style="margin-left:8px;"></span>
           </div>
           <div class="row">
-            <button id="addBtn" class="primary hidden" onclick="openForm()">+ <span id="t_add_btn">เพิ่มเครื่องใหม่</span></button>
-            <button id="usersBtn" class="hidden" onclick="toggleUsersPanel()"><span id="t_users_btn">จัดการบัญชีผู้ใช้</span></button>
+            <button id="addBtn" class="primary" onclick="openForm()">+ <span id="t_add_btn">เพิ่มเครื่องใหม่</span></button>
+            <button id="usersBtn" onclick="toggleUsersPanel()"><span id="t_users_btn">จัดการบัญชีผู้ใช้</span></button>
             <button onclick="window.print()" id="t_print_list_btn">พิมพ์รายการ</button>
             <button onclick="logout()" id="t_logout_btn">ออก</button>
           </div>
@@ -263,7 +263,7 @@
         </div>
       </div>
 
-      <!-- Account Management Panel (Owner / Admin) -->
+      <!-- Account Management Panel -->
       <section id="usersCard" class="panel hidden no-print">
         <div class="row" style="border-bottom:2px solid var(--rule-dark);padding-bottom:10px;margin-bottom:12px;">
           <strong id="t_users_title" style="font-size:17px;">สร้างและจัดการบัญชีผู้ใช้งาน (Account Management)</strong>
@@ -271,12 +271,12 @@
         </div>
         <div class="grid" style="align-items:end;">
           <div><label id="t_new_user">ชื่อผู้ใช้ใหม่ (Username)</label><input id="u_name" class="mono" placeholder="เช่น staff01"></div>
-          <div><label id="t_new_pass">รหัสผ่าน (Password)</label><input id="u_pass" class="mono" placeholder="อย่างน้อย 4 ตัวอักษร"></div>
+          <div><label id="t_new_pass">รหัสผ่าน (Password)</label><input id="u_pass" class="mono" placeholder="รหัสผ่าน"></div>
           <div>
             <label id="t_new_role">ระดับสิทธิ์ (Role)</label>
             <select id="u_role">
-              <option value="viewer">Viewer (ดูและพิมพ์อย่างเดียว)</option>
-              <option value="admin">Admin (เพิ่ม/แก้ไขข้อมูลได้)</option>
+              <option value="viewer">Viewer (ผู้ใช้งานทั่วไป)</option>
+              <option value="admin">Admin (ผู้ดูแลระบบ)</option>
               <option value="owner">Owner (เจ้าของระบบ)</option>
             </select>
           </div>
@@ -301,10 +301,10 @@
 
         <div class="spec-header"><span id="t_sec1">ข้อมูลหมายเลขเครื่องและซิมการ์ด</span><span class="mono">01</span></div>
         <div class="grid">
-          <div><label id="t_sn">หมายเลขเครื่อง (SN) *</label><input id="f_sn" class="mono"></div>
+          <div><label id="t_sn">หมายเลขเครื่อง (SN)</label><input id="f_sn" class="mono"></div>
           <div><label id="t_imei">หมายเลข IMEI</label><input id="f_imei" class="mono"></div>
           <div><label id="t_phone">เบอร์โทรศัพท์ (Phone Number)</label><input id="f_phone" class="mono"></div>
-          <div><label id="t_model">รุ่นและยี่ห้อ (Model) *</label><input id="f_model"></div>
+          <div><label id="t_model">รุ่นและยี่ห้อ (Model)</label><input id="f_model"></div>
           <div>
             <label id="t_status">สถานะเครื่อง (Status)</label>
             <select id="f_status">
@@ -363,8 +363,6 @@
     let currentId = null;
     let currentPhotoData = '';
     const fields = ['sn','imei','phone','model','holder','department','status','color','capacity','accessories','notes'];
-    const TEXT_CHECK_FIELDS = ['model','holder','department','color','capacity','accessories','notes'];
-    const BLOCKED_KEYWORDS = /\b(password|passcode|pin|cvv|otp|tac|bank|atm|debit|credit\s*card|saving|account\s*number|ktb|kbank|scb|bbl|security\s*question)\b|(รหัสผ่าน|รหัสกดเงิน|คำถามความปลอดภัย|เลขบัญชี|บัตรเอทีเอ็ม|ธนาคาร)/i;
 
     const I18N = {
       th: {
@@ -385,10 +383,10 @@
         sec2: 'ผู้ถือครองและหน่วยงาน',
         sec3: 'รายละเอียดเพิ่มเติม',
         sec4: 'รูปภาพตัวเครื่อง (ด้านล่างสุด)',
-        sn: 'หมายเลขเครื่อง (SN) *',
-        imei: 'หมายเลข IMEI (ตัวเลขใส่ได้ไม่จำกัด)',
+        sn: 'หมายเลขเครื่อง (SN)',
+        imei: 'หมายเลข IMEI',
         phone: 'เบอร์โทรศัพท์ (Phone Number)',
-        model: 'รุ่นและยี่ห้อ (Model) *',
+        model: 'รุ่นและยี่ห้อ (Model)',
         status: 'สถานะเครื่อง (Status)',
         holder: 'ชื่อผู้ถือครอง (Full Name)',
         dept: 'แผนก / สาขา (Department / Branch)',
@@ -400,8 +398,8 @@
         clear_photo: 'ลบรูปภาพ',
         no_photo: 'ยังไม่มีรูปภาพแนบ',
         save_btn: 'บันทึกข้อมูลเครื่อง',
-        edit_mode: 'สิทธิ์ Owner / Admin — แก้ไขข้อมูลและอัปโหลดรูปภาพได้',
-        ro_mode: 'สิทธิ์ผู้ใช้ทั่วไป (Viewer) — ดูและสั่งพิมพ์ได้อย่างเดียว',
+        edit_mode: 'โหมดจัดการข้อมูล — แก้ไข บันทึก และแนบรูปภาพได้อิสระ',
+        ro_mode: 'โหมดจัดการข้อมูล — แก้ไข บันทึก และแนบรูปภาพได้อิสระ',
         new_device: 'เพิ่มข้อมูลเครื่องใหม่',
         empty: 'ไม่พบข้อมูลเครื่องที่ค้นหา',
         lbl_phone: 'เบอร์โทร',
@@ -425,10 +423,10 @@
         sec2: 'Assigned Holder & Branch',
         sec3: 'Hardware Specifications & Notes',
         sec4: 'Device Photo Attachment',
-        sn: 'Serial Number (SN) *',
+        sn: 'Serial Number (SN)',
         imei: 'IMEI Number',
         phone: 'Phone Number (SIM)',
-        model: 'Device Model *',
+        model: 'Device Model',
         status: 'Status',
         holder: 'Full Name (Holder)',
         dept: 'Department / Branch',
@@ -440,8 +438,8 @@
         clear_photo: 'Remove photo',
         no_photo: 'No photo attached',
         save_btn: 'Save device record',
-        edit_mode: 'Owner / Admin access — Full edit & photo upload enabled',
-        ro_mode: 'Viewer access — Read-only & print mode',
+        edit_mode: 'Management Mode — Full edit, photo upload & unrestricted access',
+        ro_mode: 'Management Mode — Full edit, photo upload & unrestricted access',
         new_device: 'Register new device',
         empty: 'No matching devices found',
         lbl_phone: 'Phone',
@@ -486,8 +484,7 @@
       noPhotoText.textContent = t.no_photo;
       saveBtn.textContent = t.save_btn;
       if (auth) {
-        const canEdit = auth.role === 'owner' || auth.role === 'admin';
-        modeSub.textContent = canEdit ? t.edit_mode : t.ro_mode;
+        modeSub.textContent = t.edit_mode;
         loadDevices();
       }
     }
@@ -531,11 +528,10 @@
       loginBox.classList.add('hidden');
       appBox.classList.remove('hidden');
       roleBadge.textContent = `${auth.username.toUpperCase()} (${auth.role.toUpperCase()})`;
-      const canEdit = auth.role === 'owner' || auth.role === 'admin';
-      addBtn.classList.toggle('hidden', !canEdit);
-      usersBtn.classList.toggle('hidden', !canEdit);
-      saveBtn.classList.toggle('hidden', !canEdit);
-      photoControls.classList.toggle('hidden', !canEdit);
+      addBtn.classList.remove('hidden');
+      usersBtn.classList.remove('hidden');
+      saveBtn.classList.remove('hidden');
+      photoControls.classList.remove('hidden');
       applyLang();
     }
 
@@ -571,7 +567,7 @@
       const username = u_name.value.trim().toLowerCase();
       const password = u_pass.value;
       const role = u_role.value;
-      if (!username || password.length < 4) { userErr.textContent = 'กรุณากรอกชื่อผู้ใช้ และรหัสผ่านอย่างน้อย 4 ตัวอักษร'; return; }
+      if (!username || !password) { userErr.textContent = 'กรุณากรอกชื่อผู้ใช้ และรหัสผ่าน'; return; }
       try {
         const r = await fetch('/api/users', {
           method: 'POST',
@@ -611,12 +607,11 @@
 
     function renderPhotoState(dataUrl) {
       currentPhotoData = dataUrl || '';
-      const canEdit = auth && (auth.role === 'owner' || auth.role === 'admin');
       if (currentPhotoData) {
         photoPreview.src = currentPhotoData;
         photoPreview.classList.remove('hidden');
         noPhotoText.classList.add('hidden');
-        clearPhotoBtn.classList.toggle('hidden', !canEdit);
+        clearPhotoBtn.classList.remove('hidden');
       } else {
         photoPreview.src = '';
         photoPreview.classList.add('hidden');
@@ -633,14 +628,14 @@
       reader.onload = (ev) => {
         const img = new Image();
         img.onload = () => {
-          const maxW = 900;
+          const maxW = 1600;
           const scale = img.width > maxW ? maxW / img.width : 1;
           const canvas = document.createElement('canvas');
           canvas.width = Math.round(img.width * scale);
           canvas.height = Math.round(img.height * scale);
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          renderPhotoState(canvas.toDataURL('image/jpeg', 0.8));
+          renderPhotoState(canvas.toDataURL('image/jpeg', 0.85));
         };
         img.src = ev.target.result;
       };
@@ -683,13 +678,12 @@
     function viewDevice(d) {
       const t = I18N[lang];
       currentId = d.id;
-      const canEdit = auth.role === 'owner' || auth.role === 'admin';
       formTitle.textContent = `SN: ${d.sn}`;
-      modeSub.textContent = canEdit ? t.edit_mode : t.ro_mode;
+      modeSub.textContent = t.edit_mode;
       fields.forEach(k => {
         const el = document.getElementById('f_' + k);
         el.value = d[k] || '';
-        el.disabled = !canEdit;
+        el.disabled = false;
       });
       renderPhotoState(d.photo || '');
       formErr.textContent = '';
@@ -717,17 +711,11 @@
     async function saveDevice() {
       const payload = { photo: currentPhotoData };
       fields.forEach(k => payload[k] = document.getElementById('f_' + k).value.trim());
-      if (!payload.sn || !payload.model) {
-        formErr.textContent = lang === 'th' ? 'กรุณากรอกหมายเลข SN และรุ่นตัวเครื่อง' : 'Serial Number (SN) and Model are required';
-        return;
+      if (!payload.sn) {
+        payload.sn = 'SN-' + Math.floor(100000 + Math.random() * 900000);
       }
-      for (const k of TEXT_CHECK_FIELDS) {
-        if (BLOCKED_KEYWORDS.test(payload[k])) {
-          formErr.textContent = lang === 'th'
-            ? `พบคำที่ระบบจำกัดในช่อง "${k}" (ห้ามระบุรหัสผ่านหรือชื่อธนาคาร)`
-            : `Restricted keyword in "${k}" (no passwords or banking terms)`;
-          return;
-        }
+      if (!payload.model) {
+        payload.model = '-';
       }
       try {
         const url = currentId ? `/api/devices/${currentId}` : '/api/devices';

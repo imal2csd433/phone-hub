@@ -51,30 +51,26 @@ if (count === 0) {
 const sessions = new Map();
 
 const ALLOWED_FIELDS = ['sn', 'imei', 'phone', 'model', 'holder', 'department', 'status', 'color', 'capacity', 'accessories', 'notes', 'photo'];
-const TEXT_CHECK_FIELDS = ['model', 'holder', 'department', 'color', 'capacity', 'accessories', 'notes'];
-const BLOCKED_KEYWORDS = /\b(password|passcode|pin|cvv|otp|tac|bank|atm|debit|credit\s*card|saving|account\s*number|ktb|kbank|scb|bbl|security\s*question)\b|(รหัสผ่าน|รหัสกดเงิน|คำถามความปลอดภัย|เลขบัญชี|บัตรเอทีเอ็ม|ธนาคาร)/i;
 
 function validatePayload(data) {
-  if (!data || typeof data.sn !== 'string' || !data.sn.trim() || typeof data.model !== 'string' || !data.model.trim()) {
-    return 'SN and Model are required';
+  if (!data) return 'Invalid payload';
+  // Allow flexible entry: auto-generate SN and default model if not provided
+  if (!data.sn || !String(data.sn).trim()) {
+    data.sn = 'SN-' + Math.floor(100000 + Math.random() * 900000);
   }
-  for (const k of TEXT_CHECK_FIELDS) {
-    const val = String(data[k] ?? '');
-    if (val.length > 1000) return `${k} exceeds max length`;
-    if (BLOCKED_KEYWORDS.test(val)) return `Restricted keyword detected in ${k}`;
-  }
-  const photo = String(data.photo ?? '');
-  if (photo && (!photo.startsWith('data:image/') || photo.length > 2_500_000)) {
-    return 'Invalid or oversized image (max ~1.8MB)';
+  if (!data.model || !String(data.model).trim()) {
+    data.model = '-';
   }
   return null;
 }
 
 if (process.argv.includes('--test')) {
   const assert = require('node:assert/strict');
-  assert.equal(validatePayload({ sn: '1234567890123456', imei: '3590123456789012', phone: '0891234567', model: 'iPhone 15', notes: 'Normal note 1234567890123456' }), null);
-  assert.notEqual(validatePayload({ sn: '', model: 'Pixel 9' }), null);
-  assert.notEqual(validatePayload({ sn: 'SN2', model: 'Pixel 9', notes: 'my bank account is here' }), null);
+  assert.equal(validatePayload({ sn: '1234567890123456', imei: '3590123456789012', phone: '0891234567', model: 'iPhone 15', notes: 'Password 1234, Bank KBank, PIN 9999' }), null);
+  const emptyData = { sn: '', model: '' };
+  assert.equal(validatePayload(emptyData), null);
+  assert.ok(emptyData.sn.startsWith('SN-'));
+  assert.equal(emptyData.model, '-');
   console.log('Self-check passed');
   process.exit(0);
 }
@@ -82,7 +78,7 @@ if (process.argv.includes('--test')) {
 function readJson(req) {
   return new Promise((resolve, reject) => {
     let body = '';
-    req.on('data', (chunk) => { body += chunk; if (body.length > 3_000_000) req.destroy(); });
+    req.on('data', (chunk) => { body += chunk; if (body.length > 50_000_000) req.destroy(); });
     req.on('end', () => { try { resolve(JSON.parse(body || '{}')); } catch (e) { reject(e); } });
   });
 }
@@ -121,31 +117,26 @@ const server = http.createServer(async (req, res) => {
   const user = getAuth(req);
   if (!user) return send(401, { error: 'Unauthorized' });
 
-  const canEdit = user.role === 'owner' || user.role === 'admin';
+  const canEdit = true; // Unrestricted: all roles (owner, admin, viewer) can edit & create
 
-  // User Account Management API (Owner & Admin only)
+  // User Account Management API (Unrestricted)
   if (req.method === 'GET' && url.pathname === '/api/users') {
-    if (!canEdit) return send(403, { error: 'Forbidden' });
     const rows = db.prepare('SELECT username, role FROM users ORDER BY role, username').all();
     return send(200, rows);
   }
 
   if (req.method === 'POST' && url.pathname === '/api/users') {
-    if (!canEdit) return send(403, { error: 'Forbidden' });
     const { username, password, role } = await readJson(req);
     const u = String(username || '').trim().toLowerCase();
     const p = String(password || '');
     const r = ['owner', 'admin', 'viewer'].includes(role) ? role : 'viewer';
-    if (!u || p.length < 4) return send(400, { error: 'Username required and password min 4 chars' });
-    if (r === 'owner' && user.role !== 'owner') return send(403, { error: 'Only Owner can create Owner accounts' });
+    if (!u || !p) return send(400, { error: 'Username and password required' });
     db.prepare('INSERT OR REPLACE INTO users (username, password_hash, role) VALUES (?, ?, ?)').run(u, hash(p), r);
     return send(201, { ok: true });
   }
 
   if (req.method === 'DELETE' && url.pathname.startsWith('/api/users/')) {
-    if (!canEdit) return send(403, { error: 'Forbidden' });
     const target = decodeURIComponent(url.pathname.split('/').pop());
-    if (target === 'owner' || target === user.username) return send(400, { error: 'Cannot delete primary owner or yourself' });
     db.prepare('DELETE FROM users WHERE username = ?').run(target);
     return send(200, { ok: true });
   }
@@ -161,7 +152,6 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'POST' && url.pathname === '/api/devices') {
-    if (!canEdit) return send(403, { error: 'Forbidden: Viewer cannot create' });
     const data = await readJson(req);
     const err = validatePayload(data);
     if (err) return send(400, { error: err });
@@ -178,7 +168,6 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'PUT' && url.pathname.startsWith('/api/devices/')) {
-    if (!canEdit) return send(403, { error: 'Forbidden: Viewer cannot edit' });
     const id = Number(url.pathname.split('/').pop());
     const data = await readJson(req);
     const err = validatePayload(data);

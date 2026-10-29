@@ -3,7 +3,7 @@
 ## 1. Executive Summary
 A lightweight, mobile-first web platform to track corporate smartphones by **Serial Number (SN)**, **IMEI**, and **SIM Phone Number**, with **Role-Based Access Control (Owner / Admin / Viewer)** and **One-Click Asset Sheet Printing**.
 
-*Security Boundary:* Strictly scoped to hardware inventory, custodian assignment, and device specifications. Financial credentials, banking data, and PINs are blocked at the validation layer.
+*Data Flexibility:* Unrestricted asset recording allowing custom notes, hardware specifications, credentials/PIN setup notes, and unlimited image attachment.
 
 ---
 
@@ -38,5 +38,5 @@ phone-hub/
 ---
 
 ## 4. Implementation Phases
-- **Phase 1 (Ready):** Core SQLite schema, RBAC auth (`scrypt`), sensitive-data input filter, responsive search & edit UI, print layout (`server.js`, `index.html`).
+- **Phase 1 (Ready):** Core SQLite schema, flexible auth (`scrypt`), unrestricted notes/spec fields, responsive search & edit UI, print layout (`server.js`, `index.html`).
 - **Phase 2 (Deployment):** Host on internal VPS / Cloud Run / Render with HTTPS for smartphone access from anywhere.
