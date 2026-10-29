@@ -371,8 +371,9 @@
             <h3 id="formTitle" style="margin:0;font-size:18px;" class="mono"></h3>
             <span id="modeSub" style="font-size:12.5px;color:var(--muted);"></span>
           </div>
-          <div class="row no-print">
+          <div class="row no-print" style="gap:6px;">
             <button onclick="window.print()" id="t_print_sheet_btn">พิมพ์ข้อมูลเครื่องนี้</button>
+            <button type="button" id="delDeviceBtn" onclick="deleteCurrentDevice()" class="hidden" style="background:#fee2e2;color:#991b1b;border-color:#f87171;">ลบข้อมูลเครื่องนี้</button>
             <button onclick="closeForm()" id="t_close_btn">ปิดหน้าต่าง</button>
           </div>
         </div>
@@ -386,6 +387,7 @@
           <div>
             <label id="t_status">สถานะเครื่อง (Status)</label>
             <select id="f_status">
+              <option value="">-- เลือกสถานะ / Blank --</option>
               <option value="Active">Active</option>
               <option value="Spare">Spare</option>
               <option value="Repair">Repair</option>
@@ -425,8 +427,9 @@
         </div>
 
         <p id="formErr" style="color:#b91c1c;font-size:13.5px;font-weight:600;margin:10px 0 0;"></p>
-        <div class="row no-print" style="margin-top:16px">
-          <button id="saveBtn" class="primary" onclick="saveDevice()" style="width:100%;justify-content:center;padding:12px;"></button>
+        <div class="row no-print" style="margin-top:16px;gap:8px;">
+          <button id="saveBtn" class="primary" onclick="saveDevice()" style="flex:1;justify-content:center;padding:12px;"></button>
+          <button type="button" id="delDeviceBottomBtn" onclick="deleteCurrentDevice()" class="hidden" style="background:#fee2e2;color:#991b1b;border-color:#f87171;padding:12px 18px;font-weight:600;">ลบเครื่องนี้</button>
         </div>
       </section>
 
@@ -482,6 +485,8 @@
         t_save_pwd_btn: 'บันทึกรหัสผ่านใหม่',
         t_labels_btn: 'แก้ไขหัวข้อ',
         t_labels_title: 'แก้ไขชื่อหัวข้อและชื่อช่อง (Edit Headings & Field Labels)',
+        del_device_btn: 'ลบข้อมูลเครื่องนี้',
+        del_device_short: 'ลบเครื่องนี้',
         edit_mode: 'สิทธิ์ Owner / Admin — มีสิทธิ์แก้ไขข้อมูลทั้งหมด จัดการผู้ใช้งาน และเปลี่ยนรหัสผ่านได้',
         ro_mode: 'สิทธิ์ผู้ใช้ทั่วไป (Viewer) — ดูและสั่งพิมพ์ได้อย่างเดียว (ไม่มีสิทธิ์แก้ไข)',
         new_device: 'เพิ่มข้อมูลเครื่องใหม่',
@@ -528,6 +533,8 @@
         t_save_pwd_btn: 'Save new password',
         t_labels_btn: 'Edit Headings',
         t_labels_title: 'Edit Headings & Field Labels',
+        del_device_btn: 'Delete device record',
+        del_device_short: 'Delete device',
         edit_mode: 'Owner / Admin access — Full edit permissions, user management & password change enabled',
         ro_mode: 'Viewer access — Read-only & print only (no edit rights)',
         new_device: 'Register new device',
@@ -596,6 +603,8 @@
       t_my_new_pass.textContent = t.t_my_new_pass;
       t_save_pwd_btn.textContent = t.t_save_pwd_btn;
       t_labels_title.textContent = t.t_labels_title;
+      if (document.getElementById('delDeviceBtn')) delDeviceBtn.textContent = t.del_device_btn || 'ลบข้อมูลเครื่องนี้';
+      if (document.getElementById('delDeviceBottomBtn')) delDeviceBottomBtn.textContent = t.del_device_short || 'ลบเครื่องนี้';
       if (auth) {
         const canEdit = auth.role === 'owner' || auth.role === 'admin';
         modeSub.textContent = canEdit ? t.edit_mode : t.ro_mode;
@@ -909,13 +918,15 @@
       const t = I18N[lang];
       currentId = d.id;
       const canEdit = auth && (auth.role === 'owner' || auth.role === 'admin');
-      formTitle.textContent = `SN: ${d.sn}`;
+      formTitle.textContent = `SN: ${d.sn || '-'}`;
       modeSub.textContent = canEdit ? t.edit_mode : t.ro_mode;
       fields.forEach(k => {
         const el = document.getElementById('f_' + k);
         el.value = d[k] || '';
         el.disabled = !canEdit;
       });
+      if (document.getElementById('delDeviceBtn')) delDeviceBtn.classList.toggle('hidden', !canEdit);
+      if (document.getElementById('delDeviceBottomBtn')) delDeviceBottomBtn.classList.toggle('hidden', !canEdit);
       renderPhotoState(d.photo || '');
       formErr.textContent = '';
       detailCard.classList.remove('hidden');
@@ -931,12 +942,45 @@
       modeSub.textContent = t.edit_mode;
       fields.forEach(k => {
         const el = document.getElementById('f_' + k);
-        el.value = k === 'status' ? 'Active' : '';
+        el.value = ''; // completely blank - no sample data
+        el.placeholder = '';
         el.disabled = false;
       });
+      if (document.getElementById('delDeviceBtn')) delDeviceBtn.classList.add('hidden');
+      if (document.getElementById('delDeviceBottomBtn')) delDeviceBottomBtn.classList.add('hidden');
       renderPhotoState('');
       formErr.textContent = '';
       detailCard.classList.remove('hidden');
+    }
+
+    async function deleteCurrentDevice() {
+      if (!currentId) return;
+      const canEdit = auth && (auth.role === 'owner' || auth.role === 'admin');
+      if (!canEdit) {
+        alert(lang === 'th' ? 'เฉพาะ Owner และ Admin เท่านั้นที่มีสิทธิ์ลบข้อมูล' : 'Only Owner and Admin can delete devices');
+        return;
+      }
+      const confirmMsg = lang === 'th'
+        ? 'คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลเครื่องนี้? ข้อมูลจะไม่สามารถกู้คืนได้'
+        : 'Are you sure you want to delete this device record? This cannot be undone.';
+      if (!confirm(confirmMsg)) return;
+
+      try {
+        const r = await fetch(`/api/devices/${currentId}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${auth.token}` }
+        });
+        const res = await r.json();
+        if (!r.ok) {
+          formErr.textContent = res.error || 'Failed to delete';
+          return;
+        }
+      } catch {
+        const list = getLocalDevices().filter(x => x.id !== currentId);
+        localStorage.setItem('phone_hub_devices_v2', JSON.stringify(list));
+      }
+      closeForm();
+      loadDevices();
     }
 
     function closeForm() { detailCard.classList.add('hidden'); }

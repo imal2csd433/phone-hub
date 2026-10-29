@@ -219,6 +219,14 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  if (req.method === 'DELETE' && url.pathname.startsWith('/api/devices/')) {
+    if (!canEdit) return send(403, { error: 'Forbidden: Viewer cannot delete devices' });
+    const id = Number(url.pathname.split('/').pop());
+    if (!id) return send(400, { error: 'Invalid device ID' });
+    db.prepare('DELETE FROM devices WHERE id = ?').run(id);
+    return send(200, { ok: true });
+  }
+
   send(404, { error: 'Not found' });
 });
 
