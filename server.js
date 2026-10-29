@@ -100,13 +100,28 @@ const server = http.createServer(async (req, res) => {
     res.end(JSON.stringify(obj));
   };
 
-  if (req.method === 'GET' && url.pathname === '/') {
-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+  if (url.pathname === '/favicon.ico') {
+    res.writeHead(204);
+    return res.end();
+  }
+
+  if ((req.method === 'GET' || req.method === 'HEAD') && (url.pathname === '/' || url.pathname === '/index.html')) {
+    res.writeHead(200, {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+    if (req.method === 'HEAD') return res.end();
     return res.end(fs.readFileSync(path.join(__dirname, 'index.html')));
   }
 
-  if (req.method === 'GET' && url.pathname === '/presentation') {
-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+  if ((req.method === 'GET' || req.method === 'HEAD') && url.pathname === '/presentation') {
+    res.writeHead(200, {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0'
+    });
+    if (req.method === 'HEAD') return res.end();
     return res.end(fs.readFileSync(path.join(__dirname, 'presentation.html')));
   }
 

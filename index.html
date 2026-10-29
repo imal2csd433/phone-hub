@@ -410,9 +410,14 @@
         <div style="margin-top:14px">
           <div class="row" style="margin-bottom:8px;">
             <label id="t_notes" style="margin:0;font-weight:700;">บันทึกเพิ่มเติม (Notes)</label>
-            <button type="button" id="addNoteBtn" onclick="addNoteBlock('')" class="no-print" style="font-size:12.5px;padding:4px 10px;background:#F4F2EE;">+ เพิ่มบล็อกโน้ต</button>
+            <button type="button" id="addNoteBtn" onclick="addNoteBlock('')" class="no-print" style="font-size:12.5px;padding:5px 12px;background:#e0e7ff;color:#3730a3;border:1px solid #c7d2fe;border-radius:4px;font-weight:600;cursor:pointer;">+ เพิ่มบล็อกโน้ต</button>
           </div>
           <div id="notesContainer" style="display:flex;flex-direction:column;gap:8px;"></div>
+          <div style="margin-top:8px;">
+            <button type="button" id="addNoteBottomBtn" onclick="addNoteBlock('')" class="no-print" style="font-size:13px;padding:6px 14px;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;cursor:pointer;font-weight:600;color:#334155;display:inline-flex;align-items:center;gap:6px;">
+              <span>+ เพิ่มบล็อกโน้ตใหม่</span>
+            </button>
+          </div>
         </div>
 
         <!-- Bottom Image Upload & Display Section -->
@@ -491,6 +496,7 @@
         del_device_btn: 'ลบข้อมูลเครื่องนี้',
         del_device_short: 'ลบเครื่องนี้',
         add_note_btn: '+ เพิ่มบล็อกโน้ต',
+        add_note_bottom_btn: '+ เพิ่มบล็อกโน้ตใหม่',
         edit_mode: 'สิทธิ์ Owner / Admin — มีสิทธิ์แก้ไขข้อมูลทั้งหมด จัดการผู้ใช้งาน และเปลี่ยนรหัสผ่านได้',
         ro_mode: 'สิทธิ์ผู้ใช้ทั่วไป (Viewer) — ดูและสั่งพิมพ์ได้อย่างเดียว (ไม่มีสิทธิ์แก้ไข)',
         new_device: 'เพิ่มข้อมูลเครื่องใหม่',
@@ -540,6 +546,7 @@
         del_device_btn: 'Delete device record',
         del_device_short: 'Delete device',
         add_note_btn: '+ Add Note Block',
+        add_note_bottom_btn: '+ Add New Note Block',
         edit_mode: 'Owner / Admin access — Full edit permissions, user management & password change enabled',
         ro_mode: 'Viewer access — Read-only & print only (no edit rights)',
         new_device: 'Register new device',
@@ -611,6 +618,7 @@
       if (document.getElementById('delDeviceBtn')) delDeviceBtn.textContent = t.del_device_btn || 'ลบข้อมูลเครื่องนี้';
       if (document.getElementById('delDeviceBottomBtn')) delDeviceBottomBtn.textContent = t.del_device_short || 'ลบเครื่องนี้';
       if (document.getElementById('addNoteBtn')) addNoteBtn.textContent = t.add_note_btn || '+ เพิ่มบล็อกโน้ต';
+      if (document.getElementById('addNoteBottomBtn')) addNoteBottomBtn.textContent = t.add_note_bottom_btn || '+ เพิ่มบล็อกโน้ตใหม่';
       if (auth) {
         const canEdit = auth.role === 'owner' || auth.role === 'admin';
         modeSub.textContent = canEdit ? t.edit_mode : t.ro_mode;
@@ -657,6 +665,7 @@
       }
       loginBox.classList.add('hidden');
       appBox.classList.remove('hidden');
+      localStorage.setItem('phone_hub_auth_v2', JSON.stringify(auth));
       roleBadge.textContent = `${auth.username.toUpperCase()} (${auth.role.toUpperCase()})`;
       const canEdit = auth.role === 'owner' || auth.role === 'admin';
       addBtn.classList.toggle('hidden', !canEdit);
@@ -841,6 +850,7 @@
 
     function logout() {
       auth = null;
+      localStorage.removeItem('phone_hub_auth_v2');
       pwdCard.classList.add('hidden');
       usersCard.classList.add('hidden');
       labelsCard.classList.add('hidden');
@@ -898,6 +908,7 @@
       let rows = [];
       try {
         const r = await fetch(`/api/devices?q=${encodeURIComponent(q)}`, { headers: { Authorization: `Bearer ${auth.token}` } });
+        if (r.status === 401) { logout(); return; }
         rows = await r.json();
       } catch {
         rows = getLocalDevices().filter(d =>
@@ -940,15 +951,19 @@
       if (document.getElementById('addNoteBtn')) {
         addNoteBtn.classList.toggle('hidden', !canEdit);
       }
+      if (document.getElementById('addNoteBottomBtn')) {
+        addNoteBottomBtn.classList.toggle('hidden', !canEdit);
+      }
 
       let list = [];
       if (rawNotes) {
         try {
           const parsed = JSON.parse(rawNotes);
           if (Array.isArray(parsed)) list = parsed;
-          else list = [String(rawNotes)];
+          else if (typeof parsed === 'string' && parsed.trim()) list = [parsed.trim()];
+          else if (String(rawNotes).trim()) list = [String(rawNotes).trim()];
         } catch {
-          list = [String(rawNotes)];
+          if (String(rawNotes).trim()) list = [String(rawNotes).trim()];
         }
       }
 
@@ -968,16 +983,41 @@
       if (!container) return;
       const canEdit = auth && (auth.role === 'owner' || auth.role === 'admin');
       const count = container.querySelectorAll('.note-block').length + 1;
+      const noteText = typeof text === 'string' ? text : '';
+
       const div = document.createElement('div');
       div.className = 'note-block';
-      div.style.cssText = 'display:flex;gap:8px;align-items:flex-start;background:#F9F8F6;border:1.5px solid var(--rule);border-radius:4px;padding:8px;';
-      div.innerHTML = `
-        <span class="mono note-index" style="font-size:12px;font-weight:700;color:var(--cobalt);padding-top:7px;min-width:24px;">#${count}</span>
-        <textarea class="note-input" rows="2" style="flex:1;background:#fff;" placeholder="${lang === 'th' ? 'ระบุข้อความบันทึก...' : 'Enter note details...'}" ${canEdit ? '' : 'disabled'}>${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
-        ${canEdit ? `<button type="button" class="del-note-btn no-print" onclick="deleteNoteBlock(this)" style="background:#fee2e2;color:#991b1b;border-color:#fca5a5;padding:6px 10px;font-size:12px;cursor:pointer;margin-top:2px;">${lang === 'th' ? 'ลบ' : 'Delete'}</button>` : ''}
-      `;
+      div.style.cssText = 'display:flex;gap:8px;align-items:flex-start;background:#F9F8F6;border:1.5px solid var(--rule);border-radius:4px;padding:8px;margin-bottom:6px;';
+
+      const badge = document.createElement('span');
+      badge.className = 'mono note-index';
+      badge.style.cssText = 'font-size:12px;font-weight:700;color:var(--cobalt);padding-top:7px;min-width:26px;';
+      badge.textContent = '#' + count;
+
+      const ta = document.createElement('textarea');
+      ta.className = 'note-input';
+      ta.rows = 2;
+      ta.style.cssText = 'flex:1;background:#fff;border:1px solid var(--rule);border-radius:3px;padding:6px;font-family:inherit;font-size:13.5px;line-height:1.4;resize:vertical;';
+      ta.placeholder = lang === 'th' ? 'ระบุข้อความบันทึก...' : 'Enter note details...';
+      ta.disabled = !canEdit;
+      ta.value = noteText;
+
+      div.appendChild(badge);
+      div.appendChild(ta);
+
+      if (canEdit) {
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'del-note-btn no-print';
+        delBtn.style.cssText = 'background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;border-radius:3px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;margin-top:2px;white-space:nowrap;';
+        delBtn.textContent = lang === 'th' ? 'ลบ' : 'Delete';
+        delBtn.onclick = function() { deleteNoteBlock(this); };
+        div.appendChild(delBtn);
+      }
+
       container.appendChild(div);
       reindexNotes();
+      return ta;
     }
 
     function deleteNoteBlock(btn) {
@@ -1117,7 +1157,26 @@
       loadDevices();
     }
 
-    loadCustomLabels().then(() => applyLang());
+    function initSession() {
+      const savedAuth = localStorage.getItem('phone_hub_auth_v2');
+      if (savedAuth) {
+        try {
+          auth = JSON.parse(savedAuth);
+          loginBox.classList.add('hidden');
+          appBox.classList.remove('hidden');
+          roleBadge.textContent = `${auth.username.toUpperCase()} (${auth.role.toUpperCase()})`;
+          const canEdit = auth.role === 'owner' || auth.role === 'admin';
+          addBtn.classList.toggle('hidden', !canEdit);
+          usersBtn.classList.toggle('hidden', !canEdit);
+          labelsBtn.classList.toggle('hidden', !canEdit);
+          pwdBtn.classList.remove('hidden');
+          saveBtn.classList.toggle('hidden', !canEdit);
+          photoControls.classList.toggle('hidden', !canEdit);
+        } catch {}
+      }
+      loadCustomLabels().then(() => applyLang());
+    }
+    initSession();
   </script>
 </body>
 </html>
