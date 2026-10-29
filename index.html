@@ -223,12 +223,13 @@
     </header>
 
     <!-- Login View -->
-    <section id="loginBox" class="panel" style="max-width:420px;margin:28px auto;">
+    <section id="loginBox" class="panel" style="max-width:440px;margin:28px auto;">
       <h2 id="t_login_title" style="margin:0 0 6px;font-size:18px;">เข้าสู่ระบบจัดการข้อมูลเครื่อง</h2>
       <p id="t_login_hint" style="font-size:13px;color:var(--muted);margin:0 0 12px;">เลือกสิทธิ์ทดสอบ หรือกรอกชื่อผู้ใช้:</p>
-      <div class="row" style="margin-bottom:14px;justify-content:flex-start;">
-        <button type="button" onclick="fillDemo('owner','owner123')">Owner</button>
-        <button type="button" onclick="fillDemo('admin','admin123')">Admin</button>
+      <div class="row" style="margin-bottom:14px;justify-content:flex-start;gap:6px;">
+        <button type="button" onclick="fillDemo('owner','1234567')">Owner</button>
+        <button type="button" onclick="fillDemo('admin1','1234567')">Admin 1</button>
+        <button type="button" onclick="fillDemo('admin2','1234567')">Admin 2</button>
         <button type="button" onclick="fillDemo('viewer','viewer123')">Viewer</button>
       </div>
       <div style="margin-bottom:10px">
@@ -237,7 +238,7 @@
       </div>
       <div style="margin-bottom:14px">
         <label id="t_pass_lbl">รหัสผ่านเข้าแอป (Password)</label>
-        <input id="passIn" type="password" value="owner123" class="mono">
+        <input id="passIn" type="password" value="1234567" class="mono">
       </div>
       <button class="primary" onclick="login()" style="width:100%;justify-content:center;" id="t_signin_btn">เข้าสู่ระบบ</button>
       <p id="loginErr" style="color:#b91c1c;font-size:13px;margin:8px 0 0;"></p>
@@ -252,16 +253,35 @@
             <span id="roleBadge" class="tag" style="margin-left:8px;"></span>
           </div>
           <div class="row">
-            <button id="addBtn" class="primary" onclick="openForm()">+ <span id="t_add_btn">เพิ่มเครื่องใหม่</span></button>
-            <button id="usersBtn" onclick="toggleUsersPanel()"><span id="t_users_btn">จัดการบัญชีผู้ใช้</span></button>
+            <button id="addBtn" class="primary hidden" onclick="openForm()">+ <span id="t_add_btn">เพิ่มเครื่องใหม่</span></button>
+            <button id="usersBtn" class="hidden" onclick="toggleUsersPanel()"><span id="t_users_btn">จัดการบัญชีผู้ใช้</span></button>
+            <button id="pwdBtn" class="hidden" onclick="togglePwdPanel()"><span id="t_pwd_btn">เปลี่ยนรหัสผ่าน</span></button>
             <button onclick="window.print()" id="t_print_list_btn">พิมพ์รายการ</button>
-            <button onclick="logout()" id="t_logout_btn">ออก</button>
+            <button onclick="logout()" id="t_logout_btn">ออกจากระบบ</button>
           </div>
         </div>
         <div class="search-box">
           <input id="searchIn" oninput="loadDevices()">
         </div>
       </div>
+
+      <!-- Change Password Panel (Owner & Admins) -->
+      <section id="pwdCard" class="panel hidden no-print">
+        <div class="row" style="border-bottom:2px solid var(--rule-dark);padding-bottom:10px;margin-bottom:12px;">
+          <strong id="t_pwd_title" style="font-size:17px;">เปลี่ยนรหัสผ่านของฉัน (Change Password)</strong>
+          <button onclick="togglePwdPanel()">✕</button>
+        </div>
+        <div class="grid" style="align-items:end;max-width:540px;">
+          <div>
+            <label id="t_my_new_pass">รหัสผ่านใหม่ (New Password)</label>
+            <input id="my_new_pass" type="password" class="mono" placeholder="ระบุรหัสผ่านใหม่">
+          </div>
+          <div>
+            <button class="primary" onclick="changeMyPassword()" style="width:100%;justify-content:center;" id="t_save_pwd_btn">บันทึกรหัสผ่านใหม่</button>
+          </div>
+        </div>
+        <p id="pwdMsg" style="font-size:13px;margin:6px 0;font-weight:600;"></p>
+      </section>
 
       <!-- Account Management Panel -->
       <section id="usersCard" class="panel hidden no-print">
@@ -398,8 +418,12 @@
         clear_photo: 'ลบรูปภาพ',
         no_photo: 'ยังไม่มีรูปภาพแนบ',
         save_btn: 'บันทึกข้อมูลเครื่อง',
-        edit_mode: 'โหมดจัดการข้อมูล — แก้ไข บันทึก และแนบรูปภาพได้อิสระ',
-        ro_mode: 'โหมดจัดการข้อมูล — แก้ไข บันทึก และแนบรูปภาพได้อิสระ',
+        t_pwd_btn: 'เปลี่ยนรหัสผ่าน',
+        t_pwd_title: 'เปลี่ยนรหัสผ่านของฉัน (Change Password)',
+        t_my_new_pass: 'รหัสผ่านใหม่ (New Password)',
+        t_save_pwd_btn: 'บันทึกรหัสผ่านใหม่',
+        edit_mode: 'สิทธิ์ Owner / Admin — มีสิทธิ์แก้ไขข้อมูลทั้งหมด จัดการผู้ใช้งาน และเปลี่ยนรหัสผ่านได้',
+        ro_mode: 'สิทธิ์ผู้ใช้ทั่วไป (Viewer) — ดูและสั่งพิมพ์ได้อย่างเดียว (ไม่มีสิทธิ์แก้ไข)',
         new_device: 'เพิ่มข้อมูลเครื่องใหม่',
         empty: 'ไม่พบข้อมูลเครื่องที่ค้นหา',
         lbl_phone: 'เบอร์โทร',
@@ -438,8 +462,12 @@
         clear_photo: 'Remove photo',
         no_photo: 'No photo attached',
         save_btn: 'Save device record',
-        edit_mode: 'Management Mode — Full edit, photo upload & unrestricted access',
-        ro_mode: 'Management Mode — Full edit, photo upload & unrestricted access',
+        t_pwd_btn: 'Change password',
+        t_pwd_title: 'Change Account Password',
+        t_my_new_pass: 'New Password',
+        t_save_pwd_btn: 'Save new password',
+        edit_mode: 'Owner / Admin access — Full edit permissions, user management & password change enabled',
+        ro_mode: 'Viewer access — Read-only & print only (no edit rights)',
         new_device: 'Register new device',
         empty: 'No matching devices found',
         lbl_phone: 'Phone',
@@ -483,8 +511,13 @@
       clearPhotoBtn.textContent = t.clear_photo;
       noPhotoText.textContent = t.no_photo;
       saveBtn.textContent = t.save_btn;
+      t_pwd_btn.textContent = t.t_pwd_btn;
+      t_pwd_title.textContent = t.t_pwd_title;
+      t_my_new_pass.textContent = t.t_my_new_pass;
+      t_save_pwd_btn.textContent = t.t_save_pwd_btn;
       if (auth) {
-        modeSub.textContent = t.edit_mode;
+        const canEdit = auth.role === 'owner' || auth.role === 'admin';
+        modeSub.textContent = canEdit ? t.edit_mode : t.ro_mode;
         loadDevices();
       }
     }
@@ -496,8 +529,9 @@
 
     // ponytail: localStorage fallback when previewed without Node backend
     const DEMO_USERS = {
-      owner: { pass: 'owner123', role: 'owner' },
-      admin: { pass: 'admin123', role: 'admin' },
+      owner: { pass: '1234567', role: 'owner' },
+      admin1: { pass: '1234567', role: 'admin' },
+      admin2: { pass: '1234567', role: 'admin' },
       viewer: { pass: 'viewer123', role: 'viewer' }
     };
     const INITIAL_DEVICES = [
@@ -514,7 +548,7 @@
     function fillDemo(u, p) { userIn.value = u; passIn.value = p; loginErr.textContent = ''; }
 
     async function login() {
-      const u = userIn.value.trim();
+      const u = userIn.value.trim().toLowerCase();
       const p = passIn.value;
       try {
         const r = await fetch('/api/login', { method: 'POST', body: JSON.stringify({ username: u, password: p }) });
@@ -528,10 +562,12 @@
       loginBox.classList.add('hidden');
       appBox.classList.remove('hidden');
       roleBadge.textContent = `${auth.username.toUpperCase()} (${auth.role.toUpperCase()})`;
-      addBtn.classList.remove('hidden');
-      usersBtn.classList.remove('hidden');
-      saveBtn.classList.remove('hidden');
-      photoControls.classList.remove('hidden');
+      const canEdit = auth.role === 'owner' || auth.role === 'admin';
+      addBtn.classList.toggle('hidden', !canEdit);
+      usersBtn.classList.toggle('hidden', !canEdit);
+      pwdBtn.classList.remove('hidden');
+      saveBtn.classList.toggle('hidden', !canEdit);
+      photoControls.classList.toggle('hidden', !canEdit);
       applyLang();
     }
 
@@ -539,6 +575,44 @@
       const raw = localStorage.getItem('phone_hub_users_v2');
       if (!raw) { localStorage.setItem('phone_hub_users_v2', JSON.stringify(DEMO_USERS)); return { ...DEMO_USERS }; }
       return JSON.parse(raw);
+    }
+
+    function togglePwdPanel() {
+      pwdCard.classList.toggle('hidden');
+      pwdMsg.textContent = '';
+      my_new_pass.value = '';
+    }
+
+    async function changeMyPassword() {
+      const np = my_new_pass.value.trim();
+      if (!np) {
+        pwdMsg.style.color = '#b91c1c';
+        pwdMsg.textContent = lang === 'th' ? 'กรุณาระบุรหัสผ่านใหม่' : 'Please enter a new password';
+        return;
+      }
+      try {
+        const r = await fetch('/api/change-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth.token}` },
+          body: JSON.stringify({ newPassword: np })
+        });
+        const res = await r.json();
+        if (!r.ok) {
+          pwdMsg.style.color = '#b91c1c';
+          pwdMsg.textContent = res.error;
+          return;
+        }
+      } catch {
+        const map = getLocalUsers();
+        if (map[auth.username]) {
+          map[auth.username].pass = np;
+          localStorage.setItem('phone_hub_users_v2', JSON.stringify(map));
+          DEMO_USERS[auth.username].pass = np;
+        }
+      }
+      pwdMsg.style.color = '#15803d';
+      pwdMsg.textContent = lang === 'th' ? 'เปลี่ยนรหัสผ่านเรียบร้อยแล้ว' : 'Password changed successfully';
+      my_new_pass.value = '';
     }
 
     function toggleUsersPanel() {
@@ -558,9 +632,20 @@
       usersList.innerHTML = list.map(u => `
         <div class="row" style="padding:8px 10px;border:1px solid var(--rule);border-radius:4px;margin-bottom:6px;">
           <div><strong class="mono">${u.username}</strong> — <span class="tag">${u.role.toUpperCase()}</span></div>
-          ${(u.username !== 'owner' && u.username !== auth.username) ? `<button onclick="deleteUser('${u.username}')" style="padding:4px 8px;font-size:12px;">ลบ / Delete</button>` : ''}
+          <div class="row" style="gap:6px;">
+            <button onclick="fillEditUser('${u.username}', '${u.role}')" style="padding:4px 8px;font-size:12px;">เปลี่ยนรหัสผ่าน / Role</button>
+            ${(u.username !== 'owner' && u.username !== auth.username) ? `<button onclick="deleteUser('${u.username}')" style="padding:4px 8px;font-size:12px;color:#b91c1c;">ลบ</button>` : ''}
+          </div>
         </div>
       `).join('');
+    }
+
+    function fillEditUser(username, role) {
+      u_name.value = username;
+      u_role.value = role;
+      u_pass.value = '';
+      u_pass.placeholder = 'กรอกรหัสผ่านใหม่';
+      u_pass.focus();
     }
 
     async function saveUser() {
@@ -600,6 +685,8 @@
 
     function logout() {
       auth = null;
+      pwdCard.classList.add('hidden');
+      usersCard.classList.add('hidden');
       detailCard.classList.add('hidden');
       appBox.classList.add('hidden');
       loginBox.classList.remove('hidden');
@@ -607,11 +694,12 @@
 
     function renderPhotoState(dataUrl) {
       currentPhotoData = dataUrl || '';
+      const canEdit = auth && (auth.role === 'owner' || auth.role === 'admin');
       if (currentPhotoData) {
         photoPreview.src = currentPhotoData;
         photoPreview.classList.remove('hidden');
         noPhotoText.classList.add('hidden');
-        clearPhotoBtn.classList.remove('hidden');
+        clearPhotoBtn.classList.toggle('hidden', !canEdit);
       } else {
         photoPreview.src = '';
         photoPreview.classList.add('hidden');
@@ -678,12 +766,13 @@
     function viewDevice(d) {
       const t = I18N[lang];
       currentId = d.id;
+      const canEdit = auth && (auth.role === 'owner' || auth.role === 'admin');
       formTitle.textContent = `SN: ${d.sn}`;
-      modeSub.textContent = t.edit_mode;
+      modeSub.textContent = canEdit ? t.edit_mode : t.ro_mode;
       fields.forEach(k => {
         const el = document.getElementById('f_' + k);
         el.value = d[k] || '';
-        el.disabled = false;
+        el.disabled = !canEdit;
       });
       renderPhotoState(d.photo || '');
       formErr.textContent = '';
@@ -692,6 +781,8 @@
     }
 
     function openForm() {
+      const canEdit = auth && (auth.role === 'owner' || auth.role === 'admin');
+      if (!canEdit) return;
       const t = I18N[lang];
       currentId = null;
       formTitle.textContent = t.new_device;
@@ -709,6 +800,11 @@
     function closeForm() { detailCard.classList.add('hidden'); }
 
     async function saveDevice() {
+      const canEdit = auth && (auth.role === 'owner' || auth.role === 'admin');
+      if (!canEdit) {
+        formErr.textContent = lang === 'th' ? 'สิทธิ์ Viewer ไม่สามารถบันทึกหรือแก้ไขข้อมูลได้' : 'Viewer cannot edit or save records';
+        return;
+      }
       const payload = { photo: currentPhotoData };
       fields.forEach(k => payload[k] = document.getElementById('f_' + k).value.trim());
       if (!payload.sn) {

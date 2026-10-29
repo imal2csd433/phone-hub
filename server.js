@@ -34,8 +34,9 @@ try { db.exec(`ALTER TABLE devices ADD COLUMN photo TEXT DEFAULT ''`); } catch {
 
 const hash = (pw) => crypto.scryptSync(pw, 'phone-hub-salt', 32).toString('hex');
 const seedUser = db.prepare('INSERT OR IGNORE INTO users (username, password_hash, role) VALUES (?, ?, ?)');
-seedUser.run('owner', hash('owner123'), 'owner');
-seedUser.run('admin', hash('admin123'), 'admin');
+seedUser.run('owner', hash('1234567'), 'owner');
+seedUser.run('admin1', hash('1234567'), 'admin');
+seedUser.run('admin2', hash('1234567'), 'admin');
 seedUser.run('viewer', hash('viewer123'), 'viewer');
 
 const count = db.prepare('SELECT COUNT(*) as c FROM devices').get().c;
@@ -117,26 +118,41 @@ const server = http.createServer(async (req, res) => {
   const user = getAuth(req);
   if (!user) return send(401, { error: 'Unauthorized' });
 
-  const canEdit = true; // Unrestricted: all roles (owner, admin, viewer) can edit & create
+  // RBAC: Owner and Admin accounts (owner, admin1, admin2) have full edit permissions
+  const canEdit = user.role === 'owner' || user.role === 'admin';
 
-  // User Account Management API (Unrestricted)
+  // Change Password endpoint for logged in user
+  if (req.method === 'POST' && url.pathname === '/api/change-password') {
+    const { newPassword } = await readJson(req);
+    const p = String(newPassword || '').trim();
+    if (!p) return send(400, { error: 'New password required' });
+    db.prepare('UPDATE users SET password_hash = ? WHERE username = ?').run(hash(p), user.username);
+    return send(200, { ok: true, message: 'Password updated successfully' });
+  }
+
+  // User Account Management API (Owner & Admin only - can create viewers and admins)
   if (req.method === 'GET' && url.pathname === '/api/users') {
+    if (!canEdit) return send(403, { error: 'Forbidden: Viewer cannot access user management' });
     const rows = db.prepare('SELECT username, role FROM users ORDER BY role, username').all();
     return send(200, rows);
   }
 
   if (req.method === 'POST' && url.pathname === '/api/users') {
+    if (!canEdit) return send(403, { error: 'Forbidden: Viewer cannot create or manage users' });
     const { username, password, role } = await readJson(req);
     const u = String(username || '').trim().toLowerCase();
     const p = String(password || '');
     const r = ['owner', 'admin', 'viewer'].includes(role) ? role : 'viewer';
     if (!u || !p) return send(400, { error: 'Username and password required' });
+    if (r === 'owner' && user.role !== 'owner') return send(403, { error: 'Only Owner can create Owner accounts' });
     db.prepare('INSERT OR REPLACE INTO users (username, password_hash, role) VALUES (?, ?, ?)').run(u, hash(p), r);
     return send(201, { ok: true });
   }
 
   if (req.method === 'DELETE' && url.pathname.startsWith('/api/users/')) {
+    if (!canEdit) return send(403, { error: 'Forbidden: Viewer cannot delete users' });
     const target = decodeURIComponent(url.pathname.split('/').pop());
+    if (target === 'owner' || target === user.username) return send(400, { error: 'Cannot delete primary owner or yourself' });
     db.prepare('DELETE FROM users WHERE username = ?').run(target);
     return send(200, { ok: true });
   }
@@ -152,6 +168,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'POST' && url.pathname === '/api/devices') {
+    if (!canEdit) return send(403, { error: 'Forbidden: Viewer cannot create' });
     const data = await readJson(req);
     const err = validatePayload(data);
     if (err) return send(400, { error: err });
@@ -168,6 +185,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'PUT' && url.pathname.startsWith('/api/devices/')) {
+    if (!canEdit) return send(403, { error: 'Forbidden: Viewer cannot edit' });
     const id = Number(url.pathname.split('/').pop());
     const data = await readJson(req);
     const err = validatePayload(data);
