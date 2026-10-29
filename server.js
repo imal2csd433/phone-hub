@@ -36,6 +36,7 @@ db.exec(`
 
 try { db.exec(`ALTER TABLE devices ADD COLUMN photo TEXT DEFAULT ''`); } catch {}
 try { db.exec(`ALTER TABLE devices ADD COLUMN custom_fields TEXT DEFAULT '{}'`); } catch {}
+try { db.exec(`ALTER TABLE devices ADD COLUMN extra_photos TEXT DEFAULT '[]'`); } catch {}
 
 const hash = (pw) => crypto.scryptSync(pw, 'phone-hub-salt', 32).toString('hex');
 const seedUser = db.prepare('INSERT OR IGNORE INTO users (username, password_hash, role) VALUES (?, ?, ?)');
@@ -56,7 +57,7 @@ if (count === 0) {
 // ponytail: in-memory token map; move to SQLite table when persistent sessions needed
 const sessions = new Map();
 
-const ALLOWED_FIELDS = ['sn', 'imei', 'phone', 'model', 'holder', 'department', 'status', 'color', 'capacity', 'accessories', 'notes', 'photo', 'custom_fields'];
+const ALLOWED_FIELDS = ['sn', 'imei', 'phone', 'model', 'holder', 'department', 'status', 'color', 'capacity', 'accessories', 'notes', 'photo', 'custom_fields', 'extra_photos'];
 
 function validatePayload(data) {
   if (!data) return 'Invalid payload';
@@ -208,8 +209,8 @@ const server = http.createServer(async (req, res) => {
     if (err) return send(400, { error: err });
     try {
       const stmt = db.prepare(`
-        INSERT INTO devices (sn, imei, phone, model, holder, department, status, color, capacity, accessories, notes, photo, custom_fields)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO devices (sn, imei, phone, model, holder, department, status, color, capacity, accessories, notes, photo, custom_fields, extra_photos)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       const info = stmt.run(...ALLOWED_FIELDS.map((k) => String(data[k] ?? '').trim()));
       return send(201, { id: info.lastInsertRowid });
@@ -226,7 +227,7 @@ const server = http.createServer(async (req, res) => {
     if (err) return send(400, { error: err });
     try {
       db.prepare(`
-        UPDATE devices SET sn=?, imei=?, phone=?, model=?, holder=?, department=?, status=?, color=?, capacity=?, accessories=?, notes=?, photo=?, custom_fields=?, updated_at=CURRENT_TIMESTAMP
+        UPDATE devices SET sn=?, imei=?, phone=?, model=?, holder=?, department=?, status=?, color=?, capacity=?, accessories=?, notes=?, photo=?, custom_fields=?, extra_photos=?, updated_at=CURRENT_TIMESTAMP
         WHERE id=?
       `).run(...ALLOWED_FIELDS.map((k) => String(data[k] ?? '').trim()), id);
       return send(200, { ok: true });

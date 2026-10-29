@@ -406,12 +406,19 @@
           <div id="sec3_custom_list" style="display:flex;flex-direction:column;gap:6px;margin-top:10px;"></div>
           <button type="button" onclick="addCustomFieldConfig('sec3')" style="margin-top:8px;font-size:12.5px;padding:6px 12px;background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe;border-radius:4px;cursor:pointer;font-weight:600;">+ เพิ่มหัวข้อใหม่ในหมวดที่ 3</button>
 
-          <div class="spec-header" style="margin-top:14px;"><span style="color:var(--cobalt)">หมวดที่ 4: รูปภาพแนบ</span><span class="mono">04</span></div>
+          <div class="spec-header" style="margin-top:14px;"><span style="color:var(--cobalt)">หมวดที่ 4: รูปภาพตัวเครื่อง</span><span class="mono">04</span></div>
           <div class="grid">
-            <div><label>ชื่อหมวดที่ 4 (Section 4 Title)</label><input id="lbl_sec4" placeholder="รูปภาพตัวเครื่อง / เอกสารแนบ"></div>
+            <div><label>ชื่อหมวดที่ 4 (Section 4 Title)</label><input id="lbl_sec4" placeholder="รูปภาพตัวเครื่อง (Device Photos)"></div>
           </div>
           <div id="sec4_custom_list" style="display:flex;flex-direction:column;gap:6px;margin-top:10px;"></div>
           <button type="button" onclick="addCustomFieldConfig('sec4')" style="margin-top:8px;font-size:12.5px;padding:6px 12px;background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe;border-radius:4px;cursor:pointer;font-weight:600;">+ เพิ่มหัวข้อใหม่ในหมวดที่ 4</button>
+
+          <div class="spec-header" style="margin-top:14px;"><span style="color:var(--cobalt)">หมวดที่ 5: รูปภาพเพิ่มเติม / เอกสารแนบ</span><span class="mono">05</span></div>
+          <div class="grid">
+            <div><label>ชื่อหมวดที่ 5 (Section 5 Title)</label><input id="lbl_sec5" placeholder="รูปภาพเพิ่มเติม / เอกสารแนบ (Additional Photos)"></div>
+          </div>
+          <div id="sec5_custom_list" style="display:flex;flex-direction:column;gap:6px;margin-top:10px;"></div>
+          <button type="button" onclick="addCustomFieldConfig('sec5')" style="margin-top:8px;font-size:12.5px;padding:6px 12px;background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe;border-radius:4px;cursor:pointer;font-weight:600;">+ เพิ่มหัวข้อใหม่ในหมวดที่ 5</button>
 
           <div class="row" style="margin-top:16px;">
             <button type="submit" class="primary" style="padding:9px 18px;">บันทึกการแก้ไขหัวข้อ</button>
@@ -479,22 +486,40 @@
           </div>
         </div>
 
-        <!-- Bottom Image Upload & Display Section -->
-        <div class="spec-header"><span id="t_sec4">รูปภาพตัวเครื่อง / เอกสารแนบ</span><span class="mono">04</span></div>
+        <!-- Section 04: Device Photos -->
+        <div class="spec-header"><span id="t_sec4">รูปภาพตัวเครื่อง</span><span class="mono">04</span></div>
         <div id="sec4_custom_fields" class="grid" style="margin-bottom:12px;"></div>
-        <div class="photo-zone">
-          <div class="row no-print" id="photoControls" style="align-items:center;margin-bottom:12px;gap:10px;">
+        <div class="photo-zone" style="margin-bottom:18px;">
+          <div class="row no-print" id="devicePhotoControls" style="align-items:center;margin-bottom:10px;gap:10px;">
             <label class="file-label" style="margin:0;cursor:pointer;background:#e0e7ff;border:1.5px solid #c7d2fe;color:#3730a3;font-weight:700;">
-              <span id="t_upload_btn">📷 + เพิ่มรูปภาพ / ถ่ายรูป (ไม่จำกัดจำนวน)</span>
-              <input id="f_photo_in" type="file" accept="image/*" multiple style="display:none" onchange="handlePhotos(event)">
+              <span id="t_upload_device_btn">📷 + เพิ่มรูปเครื่อง / ถ่ายรูป (ไม่จำกัด)</span>
+              <input id="f_photo_device" type="file" accept="image/*" multiple style="display:none" onchange="handleDevicePhotos(event)">
             </label>
             <div class="row" style="gap:8px;">
-              <span id="photoCountBadge" class="mono" style="font-size:13px;font-weight:700;color:var(--cobalt);padding:6px 12px;background:#fff;border:1px solid var(--rule);border-radius:4px;">0 รูป</span>
-              <button type="button" id="clearAllPhotosBtn" onclick="clearAllPhotos()" class="hidden" style="font-size:12.5px;padding:6px 12px;background:#fee2e2;color:#991b1b;border-color:#fca5a5;">ลบรูปทั้งหมด</button>
+              <span id="devicePhotoCountBadge" class="mono" style="font-size:12.5px;font-weight:700;color:var(--cobalt);padding:6px 12px;background:#fff;border:1px solid var(--rule);border-radius:4px;">0 รูป</span>
+              <button type="button" id="clearDevicePhotosBtn" onclick="clearAllDevicePhotos()" class="hidden" style="font-size:12px;padding:6px 10px;background:#fee2e2;color:#991b1b;border-color:#fca5a5;">ลบรูปเครื่องทั้งหมด</button>
             </div>
           </div>
-          <div id="noPhotoText" style="font-size:13.5px;color:var(--muted);font-style:italic;padding:8px 0;">ยังไม่มีรูปภาพแนบ (สามารถแนบรูปภาพได้ไม่จำกัดจำนวน)</div>
-          <div id="photoGrid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(120px, 1fr));gap:12px;margin-top:8px;"></div>
+          <div id="noDevicePhotoText" style="font-size:13.5px;color:var(--muted);font-style:italic;padding:6px 0;">ยังไม่มีรูปตัวเครื่อง</div>
+          <div id="devicePhotoGrid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(120px, 1fr));gap:12px;margin-top:6px;"></div>
+        </div>
+
+        <!-- Section 05: Additional Photos & Documents -->
+        <div class="spec-header"><span id="t_sec5">รูปภาพเพิ่มเติม / เอกสารแนบ</span><span class="mono">05</span></div>
+        <div id="sec5_custom_fields" class="grid" style="margin-bottom:12px;"></div>
+        <div class="photo-zone">
+          <div class="row no-print" id="extraPhotoControls" style="align-items:center;margin-bottom:10px;gap:10px;">
+            <label class="file-label" style="margin:0;cursor:pointer;background:#fef3c7;border:1.5px solid #fde68a;color:#92400e;font-weight:700;">
+              <span id="t_upload_extra_btn">📎 + เพิ่มรูปเพิ่มเติม / เอกสารแนบ (ไม่จำกัด)</span>
+              <input id="f_photo_extra" type="file" accept="image/*" multiple style="display:none" onchange="handleExtraPhotos(event)">
+            </label>
+            <div class="row" style="gap:8px;">
+              <span id="extraPhotoCountBadge" class="mono" style="font-size:12.5px;font-weight:700;color:#92400e;padding:6px 12px;background:#fff;border:1px solid var(--rule);border-radius:4px;">0 รูป</span>
+              <button type="button" id="clearExtraPhotosBtn" onclick="clearAllExtraPhotos()" class="hidden" style="font-size:12px;padding:6px 10px;background:#fee2e2;color:#991b1b;border-color:#fca5a5;">ลบรูปเพิ่มเติมทั้งหมด</button>
+            </div>
+          </div>
+          <div id="noExtraPhotoText" style="font-size:13.5px;color:var(--muted);font-style:italic;padding:6px 0;">ยังไม่มีรูปภาพเพิ่มเติมหรือเอกสารแนบ</div>
+          <div id="extraPhotoGrid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(120px, 1fr));gap:12px;margin-top:6px;"></div>
         </div>
 
         <p id="formErr" style="color:#b91c1c;font-size:13.5px;font-weight:600;margin:10px 0 0;"></p>
@@ -523,7 +548,8 @@
     let lang = 'th';
     let auth = null;
     let currentId = null;
-    let currentPhotos = [];
+    let currentDevicePhotos = [];
+    let currentExtraPhotos = [];
     const fields = ['sn','imei','phone','model','holder','department','status','color','capacity','accessories'];
 
     const I18N = {
@@ -544,7 +570,8 @@
         sec1: 'ข้อมูลหมายเลขเครื่องและซิมการ์ด',
         sec2: 'ผู้ถือครองและหน่วยงาน',
         sec3: 'รายละเอียดเพิ่มเติม',
-        sec4: 'รูปภาพตัวเครื่อง (ด้านล่างสุด)',
+        sec4: 'รูปภาพตัวเครื่อง (Device Photos)',
+        sec5: 'รูปภาพเพิ่มเติม / เอกสารแนบ (Additional Photos)',
         sn: 'หมายเลขเครื่อง (SN)',
         imei: 'หมายเลข IMEI',
         phone: 'เบอร์โทรศัพท์ (Phone Number)',
@@ -556,9 +583,12 @@
         cap: 'ความจุ (Capacity)',
         acc: 'อุปกรณ์เสริม (Accessories)',
         notes: 'บันทึกเพิ่มเติม (Notes)',
-        upload_btn: '+ เลือกรูปภาพ / ถ่ายรูปจากสมาร์ทโฟน',
-        clear_photo: 'ลบรูปภาพ',
-        no_photo: 'ยังไม่มีรูปภาพแนบ',
+        t_upload_device_btn: '📷 + เพิ่มรูปเครื่อง / ถ่ายรูป (ไม่จำกัด)',
+        t_upload_extra_btn: '📎 + เพิ่มรูปเพิ่มเติม / เอกสารแนบ (ไม่จำกัด)',
+        clear_device_photo: 'ลบรูปเครื่องทั้งหมด',
+        clear_extra_photo: 'ลบรูปเพิ่มเติมทั้งหมด',
+        no_device_photo: 'ยังไม่มีรูปตัวเครื่อง',
+        no_extra_photo: 'ยังไม่มีรูปภาพเพิ่มเติมหรือเอกสารแนบ',
         save_btn: 'บันทึกข้อมูลเครื่อง',
         t_pwd_btn: 'เปลี่ยนรหัสผ่าน',
         t_pwd_title: 'เปลี่ยนรหัสผ่านของฉัน (Change Password)',
@@ -594,7 +624,8 @@
         sec1: 'Device Identification & SIM',
         sec2: 'Assigned Holder & Branch',
         sec3: 'Hardware Specifications & Notes',
-        sec4: 'Device Photo Attachment',
+        sec4: 'Device Photos',
+        sec5: 'Additional Photos & Attachments',
         sn: 'Serial Number (SN)',
         imei: 'IMEI Number',
         phone: 'Phone Number (SIM)',
@@ -606,9 +637,12 @@
         cap: 'Storage Capacity',
         acc: 'Accessories',
         notes: 'Additional Notes',
-        upload_btn: '+ Upload or take photo from smartphone',
-        clear_photo: 'Remove photo',
-        no_photo: 'No photo attached',
+        t_upload_device_btn: '📷 + Add Device Photo / Camera',
+        t_upload_extra_btn: '📎 + Add Extra Photo / Attachment',
+        clear_device_photo: 'Clear all device photos',
+        clear_extra_photo: 'Clear all extra photos',
+        no_device_photo: 'No device photos attached',
+        no_extra_photo: 'No additional photos or attachments',
         save_btn: 'Save device record',
         t_pwd_btn: 'Change password',
         t_pwd_title: 'Change Account Password',
@@ -630,7 +664,7 @@
     };
 
     let customLabels = {};
-    const LABEL_KEYS = ['registry_title', 'sec1', 'sn', 'imei', 'phone', 'model', 'status', 'sec2', 'holder', 'dept', 'sec3', 'color', 'cap', 'acc', 'notes', 'sec4'];
+    const LABEL_KEYS = ['registry_title', 'sec1', 'sn', 'imei', 'phone', 'model', 'status', 'sec2', 'holder', 'dept', 'sec3', 'color', 'cap', 'acc', 'notes', 'sec4', 'sec5'];
 
     async function loadCustomLabels() {
       try {
@@ -669,6 +703,7 @@
       t_sec2.textContent = t.sec2;
       t_sec3.textContent = t.sec3;
       t_sec4.textContent = t.sec4;
+      if (document.getElementById('t_sec5')) t_sec5.textContent = t.sec5;
       t_sn.textContent = t.sn;
       t_imei.textContent = t.imei;
       t_phone.textContent = t.phone;
@@ -680,9 +715,12 @@
       t_cap.textContent = t.cap;
       t_acc.textContent = t.acc;
       t_notes.textContent = t.notes;
-      t_upload_btn.textContent = t.upload_btn;
-      if (document.getElementById('clearAllPhotosBtn')) clearAllPhotosBtn.textContent = t.clear_photo || (lang === 'th' ? 'ลบรูปทั้งหมด' : 'Delete all photos');
-      noPhotoText.textContent = t.no_photo;
+      if (document.getElementById('t_upload_device_btn')) t_upload_device_btn.textContent = t.t_upload_device_btn;
+      if (document.getElementById('t_upload_extra_btn')) t_upload_extra_btn.textContent = t.t_upload_extra_btn;
+      if (document.getElementById('clearDevicePhotosBtn')) clearDevicePhotosBtn.textContent = t.clear_device_photo;
+      if (document.getElementById('clearExtraPhotosBtn')) clearExtraPhotosBtn.textContent = t.clear_extra_photo;
+      if (document.getElementById('noDevicePhotoText')) noDevicePhotoText.textContent = t.no_device_photo;
+      if (document.getElementById('noExtraPhotoText')) noExtraPhotoText.textContent = t.no_extra_photo;
       saveBtn.textContent = t.save_btn;
       t_pwd_title.textContent = t.t_pwd_title;
       t_my_new_pass.textContent = t.t_my_new_pass;
@@ -747,7 +785,8 @@
       labelsBtn.classList.toggle('hidden', !canEdit);
       pwdBtn.classList.remove('hidden');
       saveBtn.classList.toggle('hidden', !canEdit);
-      photoControls.classList.toggle('hidden', !canEdit);
+      if (document.getElementById('devicePhotoControls')) devicePhotoControls.classList.toggle('hidden', !canEdit);
+      if (document.getElementById('extraPhotoControls')) extraPhotoControls.classList.toggle('hidden', !canEdit);
       loadCustomLabels().then(() => applyLang());
     }
 
@@ -900,7 +939,7 @@
       });
 
       // Populate custom fields per section
-      ['sec1', 'sec2', 'sec3', 'sec4'].forEach(sec => {
+      ['sec1', 'sec2', 'sec3', 'sec4', 'sec5'].forEach(sec => {
         const container = document.getElementById(sec + '_custom_list');
         if (!container) return;
         container.innerHTML = '';
@@ -923,8 +962,8 @@
         }
       });
 
-      updated.sections = { sec1: [], sec2: [], sec3: [], sec4: [] };
-      ['sec1', 'sec2', 'sec3', 'sec4'].forEach(sec => {
+      updated.sections = { sec1: [], sec2: [], sec3: [], sec4: [], sec5: [] };
+      ['sec1', 'sec2', 'sec3', 'sec4', 'sec5'].forEach(sec => {
         const container = document.getElementById(sec + '_custom_list');
         if (container) {
           container.querySelectorAll('.custom-config-row').forEach(row => {
@@ -971,7 +1010,7 @@
 
     function renderCustomFieldsInForm() {
       const canEdit = auth && (auth.role === 'owner' || auth.role === 'admin');
-      ['sec1', 'sec2', 'sec3', 'sec4'].forEach(sec => {
+      ['sec1', 'sec2', 'sec3', 'sec4', 'sec5'].forEach(sec => {
         const container = document.getElementById(sec + '_custom_fields');
         if (!container) return;
         container.innerHTML = '';
@@ -999,36 +1038,36 @@
       loginBox.classList.remove('hidden');
     }
 
-    function renderPhotoState(photoData) {
-      currentPhotos = [];
-      if (photoData) {
-        if (Array.isArray(photoData)) {
-          currentPhotos = photoData;
-        } else {
-          try {
-            const parsed = JSON.parse(photoData);
-            if (Array.isArray(parsed)) currentPhotos = parsed;
-            else if (typeof parsed === 'string' && parsed.trim()) currentPhotos = [parsed];
-          } catch {
-            if (typeof photoData === 'string' && photoData.trim()) currentPhotos = [photoData];
-          }
-        }
+    function parsePhotoList(photoData) {
+      if (!photoData) return [];
+      if (Array.isArray(photoData)) return photoData;
+      try {
+        const parsed = JSON.parse(photoData);
+        if (Array.isArray(parsed)) return parsed;
+        if (typeof parsed === 'string' && parsed.trim()) return [parsed];
+      } catch {
+        if (typeof photoData === 'string' && photoData.trim()) return [photoData];
       }
-      renderPhotoGrid();
+      return [];
     }
 
-    function renderPhotoGrid() {
-      const grid = document.getElementById('photoGrid');
-      const noText = document.getElementById('noPhotoText');
-      const countBadge = document.getElementById('photoCountBadge');
-      const clearBtn = document.getElementById('clearAllPhotosBtn');
+    function renderDevicePhotoState(photoData) {
+      currentDevicePhotos = parsePhotoList(photoData);
+      renderDevicePhotoGrid();
+    }
+
+    function renderDevicePhotoGrid() {
+      const grid = document.getElementById('devicePhotoGrid');
+      const noText = document.getElementById('noDevicePhotoText');
+      const countBadge = document.getElementById('devicePhotoCountBadge');
+      const clearBtn = document.getElementById('clearDevicePhotosBtn');
       const canEdit = auth && (auth.role === 'owner' || auth.role === 'admin');
 
       if (!grid) return;
       grid.innerHTML = '';
-      if (countBadge) countBadge.textContent = `${currentPhotos.length} รูป`;
+      if (countBadge) countBadge.textContent = `${currentDevicePhotos.length} รูป`;
 
-      if (currentPhotos.length === 0) {
+      if (currentDevicePhotos.length === 0) {
         if (noText) noText.classList.remove('hidden');
         if (clearBtn) clearBtn.classList.add('hidden');
         return;
@@ -1037,22 +1076,60 @@
       if (noText) noText.classList.add('hidden');
       if (clearBtn) clearBtn.classList.toggle('hidden', !canEdit);
 
-      currentPhotos.forEach((src, idx) => {
+      currentDevicePhotos.forEach((src, idx) => {
         const card = document.createElement('div');
         card.style.cssText = 'position:relative;border:1.5px solid var(--rule-dark);border-radius:6px;overflow:hidden;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.08);';
         card.innerHTML = `
-          <img src="${src}" alt="Photo ${idx + 1}" style="width:100%;height:120px;object-fit:cover;display:block;cursor:pointer;" onclick="openImgModal('${src}')">
+          <img src="${src}" alt="Device Photo ${idx + 1}" style="width:100%;height:120px;object-fit:cover;display:block;cursor:pointer;" onclick="openImgModal('${src}')">
           <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;background:#F9F8F6;border-top:1px solid var(--rule);font-size:12px;">
             <span class="mono" style="font-weight:700;color:var(--cobalt);">#${idx + 1}</span>
-            ${canEdit ? `<button type="button" onclick="deletePhoto(${idx})" class="no-print" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;padding:2px 8px;font-size:11px;border-radius:3px;cursor:pointer;">ลบ</button>` : ''}
+            ${canEdit ? `<button type="button" onclick="deleteDevicePhoto(${idx})" class="no-print" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;padding:2px 8px;font-size:11px;border-radius:3px;cursor:pointer;">ลบ</button>` : ''}
           </div>
         `;
         grid.appendChild(card);
       });
     }
 
-    function handlePhotos(e) {
-      const files = e.target.files;
+    function renderExtraPhotoState(photoData) {
+      currentExtraPhotos = parsePhotoList(photoData);
+      renderExtraPhotoGrid();
+    }
+
+    function renderExtraPhotoGrid() {
+      const grid = document.getElementById('extraPhotoGrid');
+      const noText = document.getElementById('noExtraPhotoText');
+      const countBadge = document.getElementById('extraPhotoCountBadge');
+      const clearBtn = document.getElementById('clearExtraPhotosBtn');
+      const canEdit = auth && (auth.role === 'owner' || auth.role === 'admin');
+
+      if (!grid) return;
+      grid.innerHTML = '';
+      if (countBadge) countBadge.textContent = `${currentExtraPhotos.length} รูป`;
+
+      if (currentExtraPhotos.length === 0) {
+        if (noText) noText.classList.remove('hidden');
+        if (clearBtn) clearBtn.classList.add('hidden');
+        return;
+      }
+
+      if (noText) noText.classList.add('hidden');
+      if (clearBtn) clearBtn.classList.toggle('hidden', !canEdit);
+
+      currentExtraPhotos.forEach((src, idx) => {
+        const card = document.createElement('div');
+        card.style.cssText = 'position:relative;border:1.5px solid var(--rule-dark);border-radius:6px;overflow:hidden;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.08);';
+        card.innerHTML = `
+          <img src="${src}" alt="Extra Photo ${idx + 1}" style="width:100%;height:120px;object-fit:cover;display:block;cursor:pointer;" onclick="openImgModal('${src}')">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;background:#F9F8F6;border-top:1px solid var(--rule);font-size:12px;">
+            <span class="mono" style="font-weight:700;color:#92400e;">#${idx + 1}</span>
+            ${canEdit ? `<button type="button" onclick="deleteExtraPhoto(${idx})" class="no-print" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;padding:2px 8px;font-size:11px;border-radius:3px;cursor:pointer;">ลบ</button>` : ''}
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function handlePhotoFiles(files, targetArray, onComplete) {
       if (!files || files.length === 0) return;
       const readers = [];
       Array.from(files).forEach(file => {
@@ -1079,22 +1156,47 @@
       });
 
       Promise.all(readers).then(dataUrls => {
-        dataUrls.filter(Boolean).forEach(url => currentPhotos.push(url));
-        if (f_photo_in) f_photo_in.value = '';
-        renderPhotoGrid();
+        dataUrls.filter(Boolean).forEach(url => targetArray.push(url));
+        onComplete();
       });
     }
 
-    function deletePhoto(idx) {
-      currentPhotos.splice(idx, 1);
-      renderPhotoGrid();
+    function handleDevicePhotos(e) {
+      handlePhotoFiles(e.target.files, currentDevicePhotos, () => {
+        if (document.getElementById('f_photo_device')) f_photo_device.value = '';
+        renderDevicePhotoGrid();
+      });
     }
 
-    function clearAllPhotos() {
-      if (!confirm(lang === 'th' ? 'ต้องการลบรูปภาพทั้งหมดของเครื่องนี้ใช่หรือไม่?' : 'Delete all photos for this device?')) return;
-      currentPhotos = [];
-      if (f_photo_in) f_photo_in.value = '';
-      renderPhotoGrid();
+    function handleExtraPhotos(e) {
+      handlePhotoFiles(e.target.files, currentExtraPhotos, () => {
+        if (document.getElementById('f_photo_extra')) f_photo_extra.value = '';
+        renderExtraPhotoGrid();
+      });
+    }
+
+    function deleteDevicePhoto(idx) {
+      currentDevicePhotos.splice(idx, 1);
+      renderDevicePhotoGrid();
+    }
+
+    function deleteExtraPhoto(idx) {
+      currentExtraPhotos.splice(idx, 1);
+      renderExtraPhotoGrid();
+    }
+
+    function clearAllDevicePhotos() {
+      if (!confirm(lang === 'th' ? 'ต้องการลบรูปตัวเครื่องทั้งหมดใช่หรือไม่?' : 'Delete all device photos?')) return;
+      currentDevicePhotos = [];
+      if (document.getElementById('f_photo_device')) f_photo_device.value = '';
+      renderDevicePhotoGrid();
+    }
+
+    function clearAllExtraPhotos() {
+      if (!confirm(lang === 'th' ? 'ต้องการลบรูปภาพเพิ่มเติมทั้งหมดใช่หรือไม่?' : 'Delete all additional photos?')) return;
+      currentExtraPhotos = [];
+      if (document.getElementById('f_photo_extra')) f_photo_extra.value = '';
+      renderExtraPhotoGrid();
     }
 
     function openImgModal(src) {
@@ -1124,21 +1226,14 @@
       }
       listBox.innerHTML = rows.map(d => {
         let thumbHtml = '<div class="thumb mono">NO<br>IMG</div>';
-        let photoList = [];
-        if (d.photo) {
-          try {
-            const parsed = JSON.parse(d.photo);
-            if (Array.isArray(parsed)) photoList = parsed;
-            else if (parsed) photoList = [parsed];
-          } catch {
-            if (d.photo) photoList = [d.photo];
-          }
-        }
-        if (photoList.length > 0) {
+        let devPhotos = parsePhotoList(d.photo);
+        let extraPhotos = parsePhotoList(d.extra_photos);
+        let allPhotos = [...devPhotos, ...extraPhotos];
+        if (allPhotos.length > 0) {
           thumbHtml = `
             <div style="position:relative;width:56px;height:56px;flex-shrink:0;">
-              <img class="thumb" src="${photoList[0]}" alt="thumb" style="width:56px;height:56px;object-fit:cover;">
-              ${photoList.length > 1 ? `<span style="position:absolute;bottom:2px;right:2px;background:rgba(0,0,0,0.8);color:#fff;font-size:9.5px;padding:1px 4px;border-radius:2px;font-family:'JetBrains Mono';font-weight:700;">+${photoList.length - 1}</span>` : ''}
+              <img class="thumb" src="${allPhotos[0]}" alt="thumb" style="width:56px;height:56px;object-fit:cover;">
+              ${allPhotos.length > 1 ? `<span style="position:absolute;bottom:2px;right:2px;background:rgba(0,0,0,0.8);color:#fff;font-size:9.5px;padding:1px 4px;border-radius:2px;font-family:'JetBrains Mono';font-weight:700;">+${allPhotos.length - 1}</span>` : ''}
             </div>
           `;
         }
@@ -1283,7 +1378,8 @@
       renderNotesBlocks(d.notes || '');
       if (document.getElementById('delDeviceBtn')) delDeviceBtn.classList.toggle('hidden', !canEdit);
       if (document.getElementById('delDeviceBottomBtn')) delDeviceBottomBtn.classList.toggle('hidden', !canEdit);
-      renderPhotoState(d.photo || '');
+      renderDevicePhotoState(d.photo || '');
+      renderExtraPhotoState(d.extra_photos || '');
       formErr.textContent = '';
       detailCard.classList.remove('hidden');
       detailCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1314,7 +1410,8 @@
       renderNotesBlocks('');
       if (document.getElementById('delDeviceBtn')) delDeviceBtn.classList.add('hidden');
       if (document.getElementById('delDeviceBottomBtn')) delDeviceBottomBtn.classList.add('hidden');
-      renderPhotoState('');
+      renderDevicePhotoState('');
+      renderExtraPhotoState('');
       formErr.textContent = '';
       detailCard.classList.remove('hidden');
     }
@@ -1357,7 +1454,10 @@
         formErr.textContent = lang === 'th' ? 'สิทธิ์ Viewer ไม่สามารถบันทึกหรือแก้ไขข้อมูลได้' : 'Viewer cannot edit or save records';
         return;
       }
-      const payload = { photo: JSON.stringify(currentPhotos) };
+      const payload = {
+        photo: JSON.stringify(currentDevicePhotos),
+        extra_photos: JSON.stringify(currentExtraPhotos)
+      };
       fields.forEach(k => {
         const el = document.getElementById('f_' + k);
         if (el) payload[k] = el.value.trim();
@@ -1412,7 +1512,8 @@
           labelsBtn.classList.toggle('hidden', !canEdit);
           pwdBtn.classList.remove('hidden');
           saveBtn.classList.toggle('hidden', !canEdit);
-          photoControls.classList.toggle('hidden', !canEdit);
+          if (document.getElementById('devicePhotoControls')) devicePhotoControls.classList.toggle('hidden', !canEdit);
+      if (document.getElementById('extraPhotoControls')) extraPhotoControls.classList.toggle('hidden', !canEdit);
         } catch {}
       }
       loadCustomLabels().then(() => applyLang());
