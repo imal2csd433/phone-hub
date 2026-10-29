@@ -242,6 +242,63 @@
       cursor: pointer;
     }
 
+    /* Section & Field Reordering Styles (Desktop Drag & Drop + Mobile/Tablet Touch Buttons) */
+    .labels-sec-box {
+      background: #fff;
+      border: 1.5px solid var(--rule);
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 12px;
+      transition: box-shadow 0.15s ease, border-color 0.15s ease;
+    }
+    .labels-sec-box.is-dragging, .custom-config-row.is-dragging {
+      opacity: 0.45;
+      border-style: dashed !important;
+      background: #eff6ff !important;
+    }
+    .order-btn {
+      border: 1px solid #cbd5e1;
+      background: #f8fafc;
+      border-radius: 3px;
+      padding: 3px 8px;
+      font-size: 11.5px;
+      cursor: pointer;
+      font-weight: 700;
+      color: #334155;
+      line-height: 1;
+      touch-action: manipulation;
+    }
+    .order-btn:hover {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+    .drag-handle {
+      cursor: grab;
+      user-select: none;
+      font-size: 16px;
+      padding: 2px 6px;
+      background: #f1f5f9;
+      border-radius: 3px;
+      color: #475569;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+    }
+    .drag-handle:active {
+      cursor: grabbing;
+    }
+    .custom-config-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      background: #FAF9F6;
+      padding: 6px 10px;
+      border: 1px solid var(--rule);
+      border-radius: 4px;
+      margin-bottom: 4px;
+      transition: background 0.15s ease;
+    }
+
     .hidden { display: none !important; }
 
     @media (max-width: 600px) {
@@ -272,21 +329,14 @@
 
     <!-- Login View -->
     <section id="loginBox" class="panel" style="max-width:440px;margin:28px auto;">
-      <h2 id="t_login_title" style="margin:0 0 6px;font-size:18px;">เข้าสู่ระบบจัดการข้อมูลเครื่อง</h2>
-      <p id="t_login_hint" style="font-size:13px;color:var(--muted);margin:0 0 12px;">เลือกสิทธิ์ทดสอบ หรือกรอกชื่อผู้ใช้:</p>
-      <div class="row" style="margin-bottom:14px;justify-content:flex-start;gap:6px;">
-        <button type="button" onclick="fillDemo('owner','1234567')">Owner</button>
-        <button type="button" onclick="fillDemo('admin1','1234567')">Admin 1</button>
-        <button type="button" onclick="fillDemo('admin2','1234567')">Admin 2</button>
-        <button type="button" onclick="fillDemo('viewer','viewer123')">Viewer</button>
-      </div>
-      <div style="margin-bottom:10px">
+      <h2 id="t_login_title" style="margin:0 0 16px;font-size:18px;">เข้าสู่ระบบจัดการข้อมูลเครื่อง</h2>
+      <div style="margin-bottom:12px">
         <label id="t_user_lbl">ชื่อผู้ใช้ (Username)</label>
-        <input id="userIn" value="owner" class="mono">
+        <input id="userIn" value="" placeholder="ระบุชื่อผู้ใช้ / Username" class="mono" onkeydown="if(event.key==='Enter')login()">
       </div>
-      <div style="margin-bottom:14px">
+      <div style="margin-bottom:16px">
         <label id="t_pass_lbl">รหัสผ่านเข้าแอป (Password)</label>
-        <input id="passIn" type="password" value="1234567" class="mono">
+        <input id="passIn" type="password" value="" placeholder="ระบุรหัสผ่าน / Password" class="mono" onkeydown="if(event.key==='Enter')login()">
       </div>
       <button class="primary" onclick="login()" style="width:100%;justify-content:center;" id="t_signin_btn">เข้าสู่ระบบ</button>
       <p id="loginErr" style="color:#b91c1c;font-size:13px;margin:8px 0 0;"></p>
@@ -374,54 +424,125 @@
             <input id="lbl_registry_title" placeholder="รายการเครื่องโทรศัพท์ทั้งหมด">
           </div>
 
-          <div class="spec-header" style="margin-top:10px;"><span style="color:var(--cobalt)">หมวดที่ 1: ข้อมูลหลักเครื่อง</span><span class="mono">01</span></div>
-          <div class="grid">
-            <div><label>ชื่อหมวดที่ 1 (Section 1 Title)</label><input id="lbl_sec1" placeholder="ข้อมูลหมายเลขเครื่องและซิมการ์ด"></div>
-            <div><label>ชื่อช่อง SN</label><input id="lbl_sn" placeholder="หมายเลขเครื่อง (SN)"></div>
-            <div><label>ชื่อช่อง IMEI</label><input id="lbl_imei" placeholder="หมายเลข IMEI"></div>
-            <div><label>ชื่อช่อง เบอร์โทรศัพท์</label><input id="lbl_phone" placeholder="เบอร์โทรศัพท์ (Phone Number)"></div>
-            <div><label>ชื่อช่อง รุ่นและยี่ห้อ</label><input id="lbl_model" placeholder="รุ่นและยี่ห้อ (Model)"></div>
-            <div><label>ชื่อช่อง สถานะเครื่อง</label><input id="lbl_status" placeholder="สถานะเครื่อง (Status)"></div>
+          <div style="margin-bottom:10px;font-size:13px;color:var(--muted);">
+            💡 <strong>วิธีจัดลำดับ:</strong> กดลากที่สัญลักษณ์ <code>☰</code> หรือกดปุ่ม <code>▲</code> / <code>▼</code> เพื่อสลับตำแหน่งหมวดหมู่หรือหัวข้อได้อิสระ รองรับทั้งคอมพิวเตอร์ มือถือ และแท็บเล็ต
           </div>
-          <div id="sec1_custom_list" style="display:flex;flex-direction:column;gap:6px;margin-top:10px;"></div>
-          <button type="button" onclick="addCustomFieldConfig('sec1')" style="margin-top:8px;font-size:12.5px;padding:6px 12px;background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe;border-radius:4px;cursor:pointer;font-weight:600;">+ เพิ่มหัวข้อใหม่ในหมวดที่ 1</button>
 
-          <div class="spec-header" style="margin-top:14px;"><span style="color:var(--cobalt)">หมวดที่ 2: ผู้ถือครอง</span><span class="mono">02</span></div>
-          <div class="grid">
-            <div><label>ชื่อหมวดที่ 2 (Section 2 Title)</label><input id="lbl_sec2" placeholder="ผู้ถือครองและหน่วยงาน"></div>
-            <div><label>ชื่อช่อง ผู้ถือครอง</label><input id="lbl_holder" placeholder="ชื่อผู้ถือครอง (Full Name)"></div>
-            <div><label>ชื่อช่อง แผนก / สาขา</label><input id="lbl_dept" placeholder="แผนก / สาขา (Department / Branch)"></div>
-          </div>
-          <div id="sec2_custom_list" style="display:flex;flex-direction:column;gap:6px;margin-top:10px;"></div>
-          <button type="button" onclick="addCustomFieldConfig('sec2')" style="margin-top:8px;font-size:12.5px;padding:6px 12px;background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe;border-radius:4px;cursor:pointer;font-weight:600;">+ เพิ่มหัวข้อใหม่ในหมวดที่ 2</button>
+          <div id="labels_sec_container" style="display:flex;flex-direction:column;gap:12px;">
+            <!-- Section 1 -->
+            <div class="labels-sec-box" data-sec-key="sec1">
+              <div class="spec-header" style="margin-top:0;display:flex;justify-content:space-between;align-items:center;">
+                <div class="row" style="gap:8px;align-items:center;">
+                  <span class="drag-handle" draggable="true" title="ลากเพื่อจัดลำดับหมวดนี้">☰</span>
+                  <span style="color:var(--cobalt);font-weight:700;">หมวดที่ 1: ข้อมูลหลักเครื่อง</span>
+                </div>
+                <div class="row" style="gap:4px;align-items:center;">
+                  <button type="button" class="order-btn" onclick="moveSectionBlock(this, -1)" title="เลื่อนขึ้น">▲</button>
+                  <button type="button" class="order-btn" onclick="moveSectionBlock(this, 1)" title="เลื่อนลง">▼</button>
+                  <span class="mono labels-sec-badge" style="font-size:12px;padding:2px 6px;background:#e2e8f0;border-radius:3px;font-weight:700;">01</span>
+                </div>
+              </div>
+              <div class="grid" style="margin-top:8px;">
+                <div><label>ชื่อหมวดที่ 1 (Section 1 Title)</label><input id="lbl_sec1" placeholder="ข้อมูลหมายเลขเครื่องและซิมการ์ด"></div>
+                <div><label>ชื่อช่อง SN</label><input id="lbl_sn" placeholder="หมายเลขเครื่อง (SN)"></div>
+                <div><label>ชื่อช่อง IMEI</label><input id="lbl_imei" placeholder="หมายเลข IMEI"></div>
+                <div><label>ชื่อช่อง เบอร์โทรศัพท์</label><input id="lbl_phone" placeholder="เบอร์โทรศัพท์ (Phone Number)"></div>
+                <div><label>ชื่อช่อง รุ่นและยี่ห้อ</label><input id="lbl_model" placeholder="รุ่นและยี่ห้อ (Model)"></div>
+                <div><label>ชื่อช่อง สถานะเครื่อง</label><input id="lbl_status" placeholder="สถานะเครื่อง (Status)"></div>
+              </div>
+              <div id="sec1_custom_list" style="display:flex;flex-direction:column;gap:6px;margin-top:10px;"></div>
+              <button type="button" onclick="addCustomFieldConfig('sec1')" style="margin-top:8px;font-size:12.5px;padding:6px 12px;background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe;border-radius:4px;cursor:pointer;font-weight:600;">+ เพิ่มหัวข้อใหม่ในหมวดที่ 1</button>
+            </div>
 
-          <div class="spec-header" style="margin-top:14px;"><span style="color:var(--cobalt)">หมวดที่ 3: รายละเอียดเพิ่มเติม</span><span class="mono">03</span></div>
-          <div class="grid">
-            <div><label>ชื่อหมวดที่ 3 (Section 3 Title)</label><input id="lbl_sec3" placeholder="รายละเอียดเพิ่มเติม"></div>
-            <div><label>ชื่อช่อง สีตัวเครื่อง</label><input id="lbl_color" placeholder="สีตัวเครื่อง (Color)"></div>
-            <div><label>ชื่อช่อง ความจุ</label><input id="lbl_cap" placeholder="ความจุ (Capacity)"></div>
-            <div><label>ชื่อช่อง อุปกรณ์เสริม</label><input id="lbl_acc" placeholder="อุปกรณ์เสริม (Accessories)"></div>
-            <div><label>ชื่อช่อง บันทึกเพิ่มเติม / หมายเหตุ</label><input id="lbl_notes" placeholder="บันทึกเพิ่มเติม (Notes)"></div>
-          </div>
-          <div id="sec3_custom_list" style="display:flex;flex-direction:column;gap:6px;margin-top:10px;"></div>
-          <button type="button" onclick="addCustomFieldConfig('sec3')" style="margin-top:8px;font-size:12.5px;padding:6px 12px;background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe;border-radius:4px;cursor:pointer;font-weight:600;">+ เพิ่มหัวข้อใหม่ในหมวดที่ 3</button>
+            <!-- Section 2 -->
+            <div class="labels-sec-box" data-sec-key="sec2">
+              <div class="spec-header" style="margin-top:0;display:flex;justify-content:space-between;align-items:center;">
+                <div class="row" style="gap:8px;align-items:center;">
+                  <span class="drag-handle" draggable="true" title="ลากเพื่อจัดลำดับหมวดนี้">☰</span>
+                  <span style="color:var(--cobalt);font-weight:700;">หมวดที่ 2: ผู้ถือครอง</span>
+                </div>
+                <div class="row" style="gap:4px;align-items:center;">
+                  <button type="button" class="order-btn" onclick="moveSectionBlock(this, -1)" title="เลื่อนขึ้น">▲</button>
+                  <button type="button" class="order-btn" onclick="moveSectionBlock(this, 1)" title="เลื่อนลง">▼</button>
+                  <span class="mono labels-sec-badge" style="font-size:12px;padding:2px 6px;background:#e2e8f0;border-radius:3px;font-weight:700;">02</span>
+                </div>
+              </div>
+              <div class="grid" style="margin-top:8px;">
+                <div><label>ชื่อหมวดที่ 2 (Section 2 Title)</label><input id="lbl_sec2" placeholder="ผู้ถือครองและหน่วยงาน"></div>
+                <div><label>ชื่อช่อง ผู้ถือครอง</label><input id="lbl_holder" placeholder="ชื่อผู้ถือครอง (Full Name)"></div>
+                <div><label>ชื่อช่อง แผนก / สาขา</label><input id="lbl_dept" placeholder="แผนก / สาขา (Department / Branch)"></div>
+              </div>
+              <div id="sec2_custom_list" style="display:flex;flex-direction:column;gap:6px;margin-top:10px;"></div>
+              <button type="button" onclick="addCustomFieldConfig('sec2')" style="margin-top:8px;font-size:12.5px;padding:6px 12px;background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe;border-radius:4px;cursor:pointer;font-weight:600;">+ เพิ่มหัวข้อใหม่ในหมวดที่ 2</button>
+            </div>
 
-          <div class="spec-header" style="margin-top:14px;"><span style="color:var(--cobalt)">หมวดที่ 4: รูปภาพตัวเครื่อง</span><span class="mono">04</span></div>
-          <div class="grid">
-            <div><label>ชื่อหมวดที่ 4 (Section 4 Title)</label><input id="lbl_sec4" placeholder="รูปภาพตัวเครื่อง (Device Photos)"></div>
-          </div>
-          <div id="sec4_custom_list" style="display:flex;flex-direction:column;gap:6px;margin-top:10px;"></div>
-          <button type="button" onclick="addCustomFieldConfig('sec4')" style="margin-top:8px;font-size:12.5px;padding:6px 12px;background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe;border-radius:4px;cursor:pointer;font-weight:600;">+ เพิ่มหัวข้อใหม่ในหมวดที่ 4</button>
+            <!-- Section 3 -->
+            <div class="labels-sec-box" data-sec-key="sec3">
+              <div class="spec-header" style="margin-top:0;display:flex;justify-content:space-between;align-items:center;">
+                <div class="row" style="gap:8px;align-items:center;">
+                  <span class="drag-handle" draggable="true" title="ลากเพื่อจัดลำดับหมวดนี้">☰</span>
+                  <span style="color:var(--cobalt);font-weight:700;">หมวดที่ 3: รายละเอียดเพิ่มเติม</span>
+                </div>
+                <div class="row" style="gap:4px;align-items:center;">
+                  <button type="button" class="order-btn" onclick="moveSectionBlock(this, -1)" title="เลื่อนขึ้น">▲</button>
+                  <button type="button" class="order-btn" onclick="moveSectionBlock(this, 1)" title="เลื่อนลง">▼</button>
+                  <span class="mono labels-sec-badge" style="font-size:12px;padding:2px 6px;background:#e2e8f0;border-radius:3px;font-weight:700;">03</span>
+                </div>
+              </div>
+              <div class="grid" style="margin-top:8px;">
+                <div><label>ชื่อหมวดที่ 3 (Section 3 Title)</label><input id="lbl_sec3" placeholder="รายละเอียดเพิ่มเติม"></div>
+                <div><label>ชื่อช่อง สีตัวเครื่อง</label><input id="lbl_color" placeholder="สีตัวเครื่อง (Color)"></div>
+                <div><label>ชื่อช่อง ความจุ</label><input id="lbl_cap" placeholder="ความจุ (Capacity)"></div>
+                <div><label>ชื่อช่อง อุปกรณ์เสริม</label><input id="lbl_acc" placeholder="อุปกรณ์เสริม (Accessories)"></div>
+                <div><label>ชื่อช่อง บันทึกเพิ่มเติม / หมายเหตุ</label><input id="lbl_notes" placeholder="บันทึกเพิ่มเติม (Notes)"></div>
+              </div>
+              <div id="sec3_custom_list" style="display:flex;flex-direction:column;gap:6px;margin-top:10px;"></div>
+              <button type="button" onclick="addCustomFieldConfig('sec3')" style="margin-top:8px;font-size:12.5px;padding:6px 12px;background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe;border-radius:4px;cursor:pointer;font-weight:600;">+ เพิ่มหัวข้อใหม่ในหมวดที่ 3</button>
+            </div>
 
-          <div class="spec-header" style="margin-top:14px;"><span style="color:var(--cobalt)">หมวดที่ 5: รูปภาพเพิ่มเติม / เอกสารแนบ</span><span class="mono">05</span></div>
-          <div class="grid">
-            <div><label>ชื่อหมวดที่ 5 (Section 5 Title)</label><input id="lbl_sec5" placeholder="รูปภาพเพิ่มเติม / เอกสารแนบ (Additional Photos)"></div>
+            <!-- Section 4 -->
+            <div class="labels-sec-box" data-sec-key="sec4">
+              <div class="spec-header" style="margin-top:0;display:flex;justify-content:space-between;align-items:center;">
+                <div class="row" style="gap:8px;align-items:center;">
+                  <span class="drag-handle" draggable="true" title="ลากเพื่อจัดลำดับหมวดนี้">☰</span>
+                  <span style="color:var(--cobalt);font-weight:700;">หมวดที่ 4: รูปภาพตัวเครื่อง</span>
+                </div>
+                <div class="row" style="gap:4px;align-items:center;">
+                  <button type="button" class="order-btn" onclick="moveSectionBlock(this, -1)" title="เลื่อนขึ้น">▲</button>
+                  <button type="button" class="order-btn" onclick="moveSectionBlock(this, 1)" title="เลื่อนลง">▼</button>
+                  <span class="mono labels-sec-badge" style="font-size:12px;padding:2px 6px;background:#e2e8f0;border-radius:3px;font-weight:700;">04</span>
+                </div>
+              </div>
+              <div class="grid" style="margin-top:8px;">
+                <div><label>ชื่อหมวดที่ 4 (Section 4 Title)</label><input id="lbl_sec4" placeholder="รูปภาพตัวเครื่อง (Device Photos)"></div>
+              </div>
+              <div id="sec4_custom_list" style="display:flex;flex-direction:column;gap:6px;margin-top:10px;"></div>
+              <button type="button" onclick="addCustomFieldConfig('sec4')" style="margin-top:8px;font-size:12.5px;padding:6px 12px;background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe;border-radius:4px;cursor:pointer;font-weight:600;">+ เพิ่มหัวข้อใหม่ในหมวดที่ 4</button>
+            </div>
+
+            <!-- Section 5 -->
+            <div class="labels-sec-box" data-sec-key="sec5">
+              <div class="spec-header" style="margin-top:0;display:flex;justify-content:space-between;align-items:center;">
+                <div class="row" style="gap:8px;align-items:center;">
+                  <span class="drag-handle" draggable="true" title="ลากเพื่อจัดลำดับหมวดนี้">☰</span>
+                  <span style="color:var(--cobalt);font-weight:700;">หมวดที่ 5: รูปภาพเพิ่มเติม / เอกสารแนบ</span>
+                </div>
+                <div class="row" style="gap:4px;align-items:center;">
+                  <button type="button" class="order-btn" onclick="moveSectionBlock(this, -1)" title="เลื่อนขึ้น">▲</button>
+                  <button type="button" class="order-btn" onclick="moveSectionBlock(this, 1)" title="เลื่อนลง">▼</button>
+                  <span class="mono labels-sec-badge" style="font-size:12px;padding:2px 6px;background:#e2e8f0;border-radius:3px;font-weight:700;">05</span>
+                </div>
+              </div>
+              <div class="grid" style="margin-top:8px;">
+                <div><label>ชื่อหมวดที่ 5 (Section 5 Title)</label><input id="lbl_sec5" placeholder="รูปภาพเพิ่มเติม / เอกสารแนบ (Additional Photos)"></div>
+              </div>
+              <div id="sec5_custom_list" style="display:flex;flex-direction:column;gap:6px;margin-top:10px;"></div>
+              <button type="button" onclick="addCustomFieldConfig('sec5')" style="margin-top:8px;font-size:12.5px;padding:6px 12px;background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe;border-radius:4px;cursor:pointer;font-weight:600;">+ เพิ่มหัวข้อใหม่ในหมวดที่ 5</button>
+            </div>
           </div>
-          <div id="sec5_custom_list" style="display:flex;flex-direction:column;gap:6px;margin-top:10px;"></div>
-          <button type="button" onclick="addCustomFieldConfig('sec5')" style="margin-top:8px;font-size:12.5px;padding:6px 12px;background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe;border-radius:4px;cursor:pointer;font-weight:600;">+ เพิ่มหัวข้อใหม่ในหมวดที่ 5</button>
 
           <div class="row" style="margin-top:16px;">
-            <button type="submit" class="primary" style="padding:9px 18px;">บันทึกการแก้ไขหัวข้อ</button>
+            <button type="submit" class="primary" style="padding:9px 18px;">บันทึกการแก้ไขหัวข้อและลำดับ</button>
             <span id="labelsStatus" style="font-size:13px;font-weight:600;"></span>
           </div>
         </form>
@@ -441,85 +562,100 @@
           </div>
         </div>
 
-        <div class="spec-header"><span id="t_sec1">ข้อมูลหมายเลขเครื่องและซิมการ์ด</span><span class="mono">01</span></div>
-        <div class="grid">
-          <div><label id="t_sn">หมายเลขเครื่อง (SN)</label><input id="f_sn" class="mono"></div>
-          <div><label id="t_imei">หมายเลข IMEI</label><input id="f_imei" class="mono"></div>
-          <div><label id="t_phone">เบอร์โทรศัพท์ (Phone Number)</label><input id="f_phone" class="mono"></div>
-          <div><label id="t_model">รุ่นและยี่ห้อ (Model)</label><input id="f_model"></div>
-          <div>
-            <label id="t_status">สถานะเครื่อง (Status)</label>
-            <select id="f_status">
-              <option value="">-- เลือกสถานะ / Blank --</option>
-              <option value="Active">Active</option>
-              <option value="Spare">Spare</option>
-              <option value="Repair">Repair</option>
-            </select>
+        <div id="detail_sec_container">
+          <!-- Section 01 -->
+          <div id="detail_sec_block_sec1" class="detail-sec-block" data-sec-key="sec1">
+            <div class="spec-header"><span id="t_sec1">ข้อมูลหมายเลขเครื่องและซิมการ์ด</span><span class="mono sec-badge">01</span></div>
+            <div class="grid">
+              <div><label id="t_sn">หมายเลขเครื่อง (SN)</label><input id="f_sn" class="mono"></div>
+              <div><label id="t_imei">หมายเลข IMEI</label><input id="f_imei" class="mono"></div>
+              <div><label id="t_phone">เบอร์โทรศัพท์ (Phone Number)</label><input id="f_phone" class="mono"></div>
+              <div><label id="t_model">รุ่นและยี่ห้อ (Model)</label><input id="f_model"></div>
+              <div>
+                <label id="t_status">สถานะเครื่อง (Status)</label>
+                <select id="f_status">
+                  <option value="">-- เลือกสถานะ / Blank --</option>
+                  <option value="Active">Active</option>
+                  <option value="Spare">Spare</option>
+                  <option value="Repair">Repair</option>
+                </select>
+              </div>
+            </div>
+            <div id="sec1_custom_fields" class="grid" style="margin-top:10px;"></div>
           </div>
-        </div>
-        <div id="sec1_custom_fields" class="grid" style="margin-top:10px;"></div>
 
-        <div class="spec-header"><span id="t_sec2">ผู้ถือครองและหน่วยงาน</span><span class="mono">02</span></div>
-        <div class="grid">
-          <div><label id="t_holder">ชื่อผู้ถือครอง (Full Name)</label><input id="f_holder"></div>
-          <div><label id="t_dept">แผนก / สาขา (Department / Branch)</label><input id="f_department"></div>
-        </div>
-        <div id="sec2_custom_fields" class="grid" style="margin-top:10px;"></div>
-
-        <div class="spec-header"><span id="t_sec3">รายละเอียดเพิ่มเติม</span><span class="mono">03</span></div>
-        <div class="grid">
-          <div><label id="t_color">สีตัวเครื่อง (Color)</label><input id="f_color"></div>
-          <div><label id="t_cap">ความจุ (Capacity)</label><input id="f_capacity"></div>
-          <div><label id="t_acc">อุปกรณ์เสริม (Accessories)</label><input id="f_accessories"></div>
-        </div>
-        <div id="sec3_custom_fields" class="grid" style="margin-top:10px;"></div>
-        <div style="margin-top:14px">
-          <div class="row" style="margin-bottom:8px;">
-            <label id="t_notes" style="margin:0;font-weight:700;">บันทึกเพิ่มเติม (Notes)</label>
-            <button type="button" id="addNoteBtn" onclick="addNoteBlock('')" class="no-print" style="font-size:12.5px;padding:5px 12px;background:#e0e7ff;color:#3730a3;border:1px solid #c7d2fe;border-radius:4px;font-weight:600;cursor:pointer;">+ เพิ่มบล็อกโน้ต</button>
+          <!-- Section 02 -->
+          <div id="detail_sec_block_sec2" class="detail-sec-block" data-sec-key="sec2">
+            <div class="spec-header"><span id="t_sec2">ผู้ถือครองและหน่วยงาน</span><span class="mono sec-badge">02</span></div>
+            <div class="grid">
+              <div><label id="t_holder">ชื่อผู้ถือครอง (Full Name)</label><input id="f_holder"></div>
+              <div><label id="t_dept">แผนก / สาขา (Department / Branch)</label><input id="f_department"></div>
+            </div>
+            <div id="sec2_custom_fields" class="grid" style="margin-top:10px;"></div>
           </div>
-          <div id="notesContainer" style="display:flex;flex-direction:column;gap:8px;"></div>
-          <div style="margin-top:8px;">
-            <button type="button" id="addNoteBottomBtn" onclick="addNoteBlock('')" class="no-print" style="font-size:13px;padding:6px 14px;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;cursor:pointer;font-weight:600;color:#334155;display:inline-flex;align-items:center;gap:6px;">
-              <span>+ เพิ่มบล็อกโน้ตใหม่</span>
-            </button>
-          </div>
-        </div>
 
-        <!-- Section 04: Device Photos -->
-        <div class="spec-header"><span id="t_sec4">รูปภาพตัวเครื่อง</span><span class="mono">04</span></div>
-        <div id="sec4_custom_fields" class="grid" style="margin-bottom:12px;"></div>
-        <div class="photo-zone" style="margin-bottom:18px;">
-          <div class="row no-print" id="devicePhotoControls" style="align-items:center;margin-bottom:10px;gap:10px;">
-            <label class="file-label" style="margin:0;cursor:pointer;background:#e0e7ff;border:1.5px solid #c7d2fe;color:#3730a3;font-weight:700;">
-              <span id="t_upload_device_btn">📷 + เพิ่มรูปเครื่อง / ถ่ายรูป (ไม่จำกัด)</span>
-              <input id="f_photo_device" type="file" accept="image/*" multiple style="display:none" onchange="handleDevicePhotos(event)">
-            </label>
-            <div class="row" style="gap:8px;">
-              <span id="devicePhotoCountBadge" class="mono" style="font-size:12.5px;font-weight:700;color:var(--cobalt);padding:6px 12px;background:#fff;border:1px solid var(--rule);border-radius:4px;">0 รูป</span>
-              <button type="button" id="clearDevicePhotosBtn" onclick="clearAllDevicePhotos()" class="hidden" style="font-size:12px;padding:6px 10px;background:#fee2e2;color:#991b1b;border-color:#fca5a5;">ลบรูปเครื่องทั้งหมด</button>
+          <!-- Section 03 -->
+          <div id="detail_sec_block_sec3" class="detail-sec-block" data-sec-key="sec3">
+            <div class="spec-header"><span id="t_sec3">รายละเอียดเพิ่มเติม</span><span class="mono sec-badge">03</span></div>
+            <div class="grid">
+              <div><label id="t_color">สีตัวเครื่อง (Color)</label><input id="f_color"></div>
+              <div><label id="t_cap">ความจุ (Capacity)</label><input id="f_capacity"></div>
+              <div><label id="t_acc">อุปกรณ์เสริม (Accessories)</label><input id="f_accessories"></div>
+            </div>
+            <div id="sec3_custom_fields" class="grid" style="margin-top:10px;"></div>
+            <div style="margin-top:14px">
+              <div class="row" style="margin-bottom:8px;">
+                <label id="t_notes" style="margin:0;font-weight:700;">บันทึกเพิ่มเติม (Notes)</label>
+                <button type="button" id="addNoteBtn" onclick="addNoteBlock('')" class="no-print" style="font-size:12.5px;padding:5px 12px;background:#e0e7ff;color:#3730a3;border:1px solid #c7d2fe;border-radius:4px;font-weight:600;cursor:pointer;">+ เพิ่มบล็อกโน้ต</button>
+              </div>
+              <div id="notesContainer" style="display:flex;flex-direction:column;gap:8px;"></div>
+              <div style="margin-top:8px;">
+                <button type="button" id="addNoteBottomBtn" onclick="addNoteBlock('')" class="no-print" style="font-size:13px;padding:6px 14px;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;cursor:pointer;font-weight:600;color:#334155;display:inline-flex;align-items:center;gap:6px;">
+                  <span>+ เพิ่มบล็อกโน้ตใหม่</span>
+                </button>
+              </div>
             </div>
           </div>
-          <div id="noDevicePhotoText" style="font-size:13.5px;color:var(--muted);font-style:italic;padding:6px 0;">ยังไม่มีรูปตัวเครื่อง</div>
-          <div id="devicePhotoGrid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(120px, 1fr));gap:12px;margin-top:6px;"></div>
-        </div>
 
-        <!-- Section 05: Additional Photos & Documents -->
-        <div class="spec-header"><span id="t_sec5">รูปภาพเพิ่มเติม / เอกสารแนบ</span><span class="mono">05</span></div>
-        <div id="sec5_custom_fields" class="grid" style="margin-bottom:12px;"></div>
-        <div class="photo-zone">
-          <div class="row no-print" id="extraPhotoControls" style="align-items:center;margin-bottom:10px;gap:10px;">
-            <label class="file-label" style="margin:0;cursor:pointer;background:#fef3c7;border:1.5px solid #fde68a;color:#92400e;font-weight:700;">
-              <span id="t_upload_extra_btn">📎 + เพิ่มรูปเพิ่มเติม / เอกสารแนบ (ไม่จำกัด)</span>
-              <input id="f_photo_extra" type="file" accept="image/*" multiple style="display:none" onchange="handleExtraPhotos(event)">
-            </label>
-            <div class="row" style="gap:8px;">
-              <span id="extraPhotoCountBadge" class="mono" style="font-size:12.5px;font-weight:700;color:#92400e;padding:6px 12px;background:#fff;border:1px solid var(--rule);border-radius:4px;">0 รูป</span>
-              <button type="button" id="clearExtraPhotosBtn" onclick="clearAllExtraPhotos()" class="hidden" style="font-size:12px;padding:6px 10px;background:#fee2e2;color:#991b1b;border-color:#fca5a5;">ลบรูปเพิ่มเติมทั้งหมด</button>
+          <!-- Section 04: Device Photos -->
+          <div id="detail_sec_block_sec4" class="detail-sec-block" data-sec-key="sec4">
+            <div class="spec-header"><span id="t_sec4">รูปภาพตัวเครื่อง</span><span class="mono sec-badge">04</span></div>
+            <div id="sec4_custom_fields" class="grid" style="margin-bottom:12px;"></div>
+            <div class="photo-zone" style="margin-bottom:18px;">
+              <div class="row no-print" id="devicePhotoControls" style="align-items:center;margin-bottom:10px;gap:10px;">
+                <label class="file-label" style="margin:0;cursor:pointer;background:#e0e7ff;border:1.5px solid #c7d2fe;color:#3730a3;font-weight:700;">
+                  <span id="t_upload_device_btn">📷 + เพิ่มรูปเครื่อง / ถ่ายรูป (ไม่จำกัด)</span>
+                  <input id="f_photo_device" type="file" accept="image/*" multiple style="display:none" onchange="handleDevicePhotos(event)">
+                </label>
+                <div class="row" style="gap:8px;">
+                  <span id="devicePhotoCountBadge" class="mono" style="font-size:12.5px;font-weight:700;color:var(--cobalt);padding:6px 12px;background:#fff;border:1px solid var(--rule);border-radius:4px;">0 รูป</span>
+                  <button type="button" id="clearDevicePhotosBtn" onclick="clearAllDevicePhotos()" class="hidden" style="font-size:12px;padding:6px 10px;background:#fee2e2;color:#991b1b;border-color:#fca5a5;">ลบรูปเครื่องทั้งหมด</button>
+                </div>
+              </div>
+              <div id="noDevicePhotoText" style="font-size:13.5px;color:var(--muted);font-style:italic;padding:6px 0;">ยังไม่มีรูปตัวเครื่อง</div>
+              <div id="devicePhotoGrid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(120px, 1fr));gap:12px;margin-top:6px;"></div>
             </div>
           </div>
-          <div id="noExtraPhotoText" style="font-size:13.5px;color:var(--muted);font-style:italic;padding:6px 0;">ยังไม่มีรูปภาพเพิ่มเติมหรือเอกสารแนบ</div>
-          <div id="extraPhotoGrid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(120px, 1fr));gap:12px;margin-top:6px;"></div>
+
+          <!-- Section 05: Additional Photos & Documents -->
+          <div id="detail_sec_block_sec5" class="detail-sec-block" data-sec-key="sec5">
+            <div class="spec-header"><span id="t_sec5">รูปภาพเพิ่มเติม / เอกสารแนบ</span><span class="mono sec-badge">05</span></div>
+            <div id="sec5_custom_fields" class="grid" style="margin-bottom:12px;"></div>
+            <div class="photo-zone">
+              <div class="row no-print" id="extraPhotoControls" style="align-items:center;margin-bottom:10px;gap:10px;">
+                <label class="file-label" style="margin:0;cursor:pointer;background:#fef3c7;border:1.5px solid #fde68a;color:#92400e;font-weight:700;">
+                  <span id="t_upload_extra_btn">📎 + เพิ่มรูปเพิ่มเติม / เอกสารแนบ (ไม่จำกัด)</span>
+                  <input id="f_photo_extra" type="file" accept="image/*" multiple style="display:none" onchange="handleExtraPhotos(event)">
+                </label>
+                <div class="row" style="gap:8px;">
+                  <span id="extraPhotoCountBadge" class="mono" style="font-size:12.5px;font-weight:700;color:#92400e;padding:6px 12px;background:#fff;border:1px solid var(--rule);border-radius:4px;">0 รูป</span>
+                  <button type="button" id="clearExtraPhotosBtn" onclick="clearAllExtraPhotos()" class="hidden" style="font-size:12px;padding:6px 10px;background:#fee2e2;color:#991b1b;border-color:#fca5a5;">ลบรูปเพิ่มเติมทั้งหมด</button>
+                </div>
+              </div>
+              <div id="noExtraPhotoText" style="font-size:13.5px;color:var(--muted);font-style:italic;padding:6px 0;">ยังไม่มีรูปภาพเพิ่มเติมหรือเอกสารแนบ</div>
+              <div id="extraPhotoGrid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(120px, 1fr));gap:12px;margin-top:6px;"></div>
+            </div>
+          </div>
         </div>
 
         <p id="formErr" style="color:#b91c1c;font-size:13.5px;font-weight:600;margin:10px 0 0;"></p>
@@ -685,7 +821,7 @@
       langBtn.textContent = lang === 'th' ? 'เปลี่ยนภาษา: EN' : 'Language: TH';
       t_subtitle.textContent = t.subtitle;
       t_login_title.textContent = t.login_title;
-      t_login_hint.textContent = t.login_hint;
+      if (document.getElementById('t_login_hint')) t_login_hint.textContent = t.login_hint;
       t_user_lbl.textContent = t.user_lbl;
       t_pass_lbl.textContent = t.pass_lbl;
       t_signin_btn.textContent = t.signin_btn;
@@ -730,6 +866,7 @@
       if (document.getElementById('delDeviceBottomBtn')) delDeviceBottomBtn.textContent = t.del_device_short || 'ลบเครื่องนี้';
       if (document.getElementById('addNoteBtn')) addNoteBtn.textContent = t.add_note_btn || '+ เพิ่มบล็อกโน้ต';
       if (document.getElementById('addNoteBottomBtn')) addNoteBottomBtn.textContent = t.add_note_bottom_btn || '+ เพิ่มบล็อกโน้ตใหม่';
+      applySectionOrder();
       renderCustomFieldsInForm();
       if (auth) {
         const canEdit = auth.role === 'owner' || auth.role === 'admin';
@@ -909,6 +1046,82 @@
       }
     }
 
+    function moveSectionBlock(btn, dir) {
+      const box = btn.closest('.labels-sec-box');
+      if (!box) return;
+      if (dir === -1) {
+        const prev = box.previousElementSibling;
+        if (prev && prev.classList.contains('labels-sec-box')) {
+          box.parentNode.insertBefore(box, prev);
+        }
+      } else if (dir === 1) {
+        const next = box.nextElementSibling;
+        if (next && next.classList.contains('labels-sec-box')) {
+          box.parentNode.insertBefore(next, box);
+        }
+      }
+      updateLabelsSectionBadges();
+    }
+
+    function moveCustomFieldRow(btn, dir) {
+      const row = btn.closest('.custom-config-row');
+      if (!row) return;
+      if (dir === -1) {
+        const prev = row.previousElementSibling;
+        if (prev && prev.classList.contains('custom-config-row')) {
+          row.parentNode.insertBefore(row, prev);
+        }
+      } else if (dir === 1) {
+        const next = row.nextElementSibling;
+        if (next && next.classList.contains('custom-config-row')) {
+          row.parentNode.insertBefore(next, row);
+        }
+      }
+    }
+
+    function updateLabelsSectionBadges() {
+      const container = document.getElementById('labels_sec_container');
+      if (!container) return;
+      const boxes = container.querySelectorAll('.labels-sec-box');
+      boxes.forEach((box, idx) => {
+        const badge = box.querySelector('.labels-sec-badge');
+        if (badge) badge.textContent = String(idx + 1).padStart(2, '0');
+      });
+    }
+
+    function applySectionOrder() {
+      const defaultOrder = ['sec1', 'sec2', 'sec3', 'sec4', 'sec5'];
+      const order = (customLabels && Array.isArray(customLabels.section_order) && customLabels.section_order.length === 5)
+        ? customLabels.section_order
+        : defaultOrder;
+
+      // 1. Order in Device Detail / Edit sheet (#detail_sec_container)
+      const detailContainer = document.getElementById('detail_sec_container');
+      if (detailContainer) {
+        order.forEach((secKey, idx) => {
+          const block = document.getElementById('detail_sec_block_' + secKey);
+          if (block) {
+            detailContainer.appendChild(block);
+            const badge = block.querySelector('.sec-badge');
+            if (badge) badge.textContent = String(idx + 1).padStart(2, '0');
+          }
+        });
+      }
+
+      // 2. Order in Headings Settings (#labels_sec_container)
+      const labelsContainer = document.getElementById('labels_sec_container');
+      if (labelsContainer) {
+        order.forEach((secKey, idx) => {
+          const box = labelsContainer.querySelector(`.labels-sec-box[data-sec-key="${secKey}"]`);
+          if (box) {
+            labelsContainer.appendChild(box);
+            const badge = box.querySelector('.labels-sec-badge');
+            if (badge) badge.textContent = String(idx + 1).padStart(2, '0');
+          }
+        });
+      }
+    }
+
     function addCustomFieldConfig(secKey, label = '', id = '') {
       const list = document.getElementById(secKey + '_custom_list');
       if (!list) return;
@@ -917,11 +1130,14 @@
       row.className = 'custom-config-row';
       row.setAttribute('data-sec', secKey);
       row.setAttribute('data-cf-id', fieldId);
-      row.style.cssText = 'display:flex;gap:8px;align-items:center;background:#FAF9F6;padding:6px 10px;border:1px solid var(--rule);border-radius:4px;margin-bottom:4px;';
+      row.setAttribute('draggable', 'true');
       row.innerHTML = `
+        <span class="drag-handle" title="ลากเพื่อจัดลำดับหัวข้อ" style="padding:2px 5px;font-size:13px;">☰</span>
+        <button type="button" class="order-btn" onclick="moveCustomFieldRow(this, -1)" title="เลื่อนขึ้น">▲</button>
+        <button type="button" class="order-btn" onclick="moveCustomFieldRow(this, 1)" title="เลื่อนลง">▼</button>
         <span class="mono" style="font-size:12px;color:var(--cobalt);font-weight:700;white-space:nowrap;">+ หัวข้อ:</span>
         <input class="custom-field-label-input" value="${(label || '').replace(/"/g, '&quot;')}" placeholder="เช่น ธนาคาร, เลขที่บัญชี, TAC Phone" style="flex:1;">
-        <button type="button" onclick="this.closest('.custom-config-row').remove()" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;padding:5px 10px;font-size:12px;cursor:pointer;white-space:nowrap;">ลบ</button>
+        <button type="button" onclick="this.closest('.custom-config-row').remove()" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;padding:4px 8px;font-size:12px;cursor:pointer;white-space:nowrap;border-radius:3px;">ลบ</button>
       `;
       list.appendChild(row);
       const inp = row.querySelector('.custom-field-label-input');
@@ -937,6 +1153,9 @@
           el.placeholder = base[k] || '';
         }
       });
+
+      // Apply saved section order in #labelsCard
+      applySectionOrder();
 
       // Populate custom fields per section
       ['sec1', 'sec2', 'sec3', 'sec4', 'sec5'].forEach(sec => {
@@ -962,6 +1181,11 @@
         }
       });
 
+      // Read current section order from DOM
+      const secBoxes = Array.from(document.querySelectorAll('#labels_sec_container .labels-sec-box'));
+      updated.section_order = secBoxes.map(b => b.getAttribute('data-sec-key')).filter(Boolean);
+
+      // Read custom fields per section in visual DOM order
       updated.sections = { sec1: [], sec2: [], sec3: [], sec4: [], sec5: [] };
       ['sec1', 'sec2', 'sec3', 'sec4', 'sec5'].forEach(sec => {
         const container = document.getElementById(sec + '_custom_list');
@@ -987,18 +1211,18 @@
       } catch {}
       localStorage.setItem('phone_hub_custom_labels', JSON.stringify(customLabels));
       labelsStatus.style.color = '#15803d';
-      labelsStatus.textContent = lang === 'th' ? 'บันทึกชื่อหัวข้อเรียบร้อยแล้ว' : 'Headings saved successfully';
+      labelsStatus.textContent = lang === 'th' ? 'บันทึกชื่อหัวข้อและลำดับเรียบร้อยแล้ว' : 'Headings and order saved successfully';
       loadCustomLabels().then(() => applyLang());
     }
 
     async function resetLabelsToDefault() {
-      if (!confirm(lang === 'th' ? 'ยืนยันคืนค่าชื่อหัวข้อเริ่มต้นทั้งหมด?' : 'Reset all headings to default?')) return;
-      customLabels = {};
+      if (!confirm(lang === 'th' ? 'ยืนยันคืนค่าชื่อหัวข้อและลำดับเริ่มต้นทั้งหมด?' : 'Reset all headings and ordering to default?')) return;
+      customLabels = { section_order: ['sec1', 'sec2', 'sec3', 'sec4', 'sec5'], sections: { sec1: [], sec2: [], sec3: [], sec4: [], sec5: [] } };
       try {
         await fetch('/api/labels', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth.token}` },
-          body: JSON.stringify({})
+          body: JSON.stringify(customLabels)
         });
       } catch {}
       localStorage.removeItem('phone_hub_custom_labels');
@@ -1024,6 +1248,47 @@
           `;
           container.appendChild(div);
         });
+      });
+    }
+
+    // Drag-and-drop handler for both sections and custom fields
+    let draggedEl = null;
+    function setupDragAndDrop() {
+      document.addEventListener('dragstart', (e) => {
+        const cfRow = e.target.closest('.custom-config-row');
+        if (cfRow) {
+          draggedEl = cfRow;
+          cfRow.classList.add('is-dragging');
+          e.dataTransfer.effectAllowed = 'move';
+          return;
+        }
+        const handle = e.target.closest('.drag-handle');
+        const secBox = e.target.closest('.labels-sec-box');
+        if (handle && secBox) {
+          draggedEl = secBox;
+          secBox.classList.add('is-dragging');
+          e.dataTransfer.effectAllowed = 'move';
+        }
+      });
+
+      document.addEventListener('dragend', (e) => {
+        if (draggedEl) {
+          draggedEl.classList.remove('is-dragging');
+          draggedEl = null;
+          updateLabelsSectionBadges();
+        }
+      });
+
+      document.addEventListener('dragover', (e) => {
+        if (!draggedEl) return;
+        const isCf = draggedEl.classList.contains('custom-config-row');
+        const target = e.target.closest(isCf ? '.custom-config-row' : '.labels-sec-box');
+        if (target && target !== draggedEl && target.parentNode === draggedEl.parentNode) {
+          e.preventDefault();
+          const rect = target.getBoundingClientRect();
+          const next = (e.clientY - rect.top) / (rect.bottom - rect.top) > 0.5;
+          target.parentNode.insertBefore(draggedEl, next ? target.nextSibling : target);
+        }
       });
     }
 
@@ -1499,6 +1764,7 @@
     }
 
     function initSession() {
+      setupDragAndDrop();
       const savedAuth = localStorage.getItem('phone_hub_auth_v2');
       if (savedAuth) {
         try {
