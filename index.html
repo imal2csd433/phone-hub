@@ -407,9 +407,12 @@
           <div><label id="t_cap">ความจุ (Capacity)</label><input id="f_capacity"></div>
           <div><label id="t_acc">อุปกรณ์เสริม (Accessories)</label><input id="f_accessories"></div>
         </div>
-        <div style="margin-top:12px">
-          <label id="t_notes">บันทึกเพิ่มเติม (Notes)</label>
-          <textarea id="f_notes" rows="2"></textarea>
+        <div style="margin-top:14px">
+          <div class="row" style="margin-bottom:8px;">
+            <label id="t_notes" style="margin:0;font-weight:700;">บันทึกเพิ่มเติม (Notes)</label>
+            <button type="button" id="addNoteBtn" onclick="addNoteBlock('')" class="no-print" style="font-size:12.5px;padding:4px 10px;background:#F4F2EE;">+ เพิ่มบล็อกโน้ต</button>
+          </div>
+          <div id="notesContainer" style="display:flex;flex-direction:column;gap:8px;"></div>
         </div>
 
         <!-- Bottom Image Upload & Display Section -->
@@ -443,7 +446,7 @@
     let auth = null;
     let currentId = null;
     let currentPhotoData = '';
-    const fields = ['sn','imei','phone','model','holder','department','status','color','capacity','accessories','notes'];
+    const fields = ['sn','imei','phone','model','holder','department','status','color','capacity','accessories'];
 
     const I18N = {
       th: {
@@ -487,6 +490,7 @@
         t_labels_title: 'แก้ไขชื่อหัวข้อและชื่อช่อง (Edit Headings & Field Labels)',
         del_device_btn: 'ลบข้อมูลเครื่องนี้',
         del_device_short: 'ลบเครื่องนี้',
+        add_note_btn: '+ เพิ่มบล็อกโน้ต',
         edit_mode: 'สิทธิ์ Owner / Admin — มีสิทธิ์แก้ไขข้อมูลทั้งหมด จัดการผู้ใช้งาน และเปลี่ยนรหัสผ่านได้',
         ro_mode: 'สิทธิ์ผู้ใช้ทั่วไป (Viewer) — ดูและสั่งพิมพ์ได้อย่างเดียว (ไม่มีสิทธิ์แก้ไข)',
         new_device: 'เพิ่มข้อมูลเครื่องใหม่',
@@ -535,6 +539,7 @@
         t_labels_title: 'Edit Headings & Field Labels',
         del_device_btn: 'Delete device record',
         del_device_short: 'Delete device',
+        add_note_btn: '+ Add Note Block',
         edit_mode: 'Owner / Admin access — Full edit permissions, user management & password change enabled',
         ro_mode: 'Viewer access — Read-only & print only (no edit rights)',
         new_device: 'Register new device',
@@ -605,6 +610,7 @@
       t_labels_title.textContent = t.t_labels_title;
       if (document.getElementById('delDeviceBtn')) delDeviceBtn.textContent = t.del_device_btn || 'ลบข้อมูลเครื่องนี้';
       if (document.getElementById('delDeviceBottomBtn')) delDeviceBottomBtn.textContent = t.del_device_short || 'ลบเครื่องนี้';
+      if (document.getElementById('addNoteBtn')) addNoteBtn.textContent = t.add_note_btn || '+ เพิ่มบล็อกโน้ต';
       if (auth) {
         const canEdit = auth.role === 'owner' || auth.role === 'admin';
         modeSub.textContent = canEdit ? t.edit_mode : t.ro_mode;
@@ -914,6 +920,88 @@
       `).join('') || `<div class="panel">${t.empty}</div>`;
     }
 
+    function getNotesData() {
+      const container = document.getElementById('notesContainer');
+      if (!container) return '';
+      const textareas = container.querySelectorAll('.note-input');
+      const arr = [];
+      textareas.forEach(ta => {
+        const val = ta.value.trim();
+        if (val) arr.push(val);
+      });
+      return arr.length ? JSON.stringify(arr) : '';
+    }
+
+    function renderNotesBlocks(rawNotes) {
+      const container = document.getElementById('notesContainer');
+      if (!container) return;
+      container.innerHTML = '';
+      const canEdit = auth && (auth.role === 'owner' || auth.role === 'admin');
+      if (document.getElementById('addNoteBtn')) {
+        addNoteBtn.classList.toggle('hidden', !canEdit);
+      }
+
+      let list = [];
+      if (rawNotes) {
+        try {
+          const parsed = JSON.parse(rawNotes);
+          if (Array.isArray(parsed)) list = parsed;
+          else list = [String(rawNotes)];
+        } catch {
+          list = [String(rawNotes)];
+        }
+      }
+
+      if (list.length === 0) {
+        if (canEdit) {
+          addNoteBlock('');
+        } else {
+          container.innerHTML = `<div style="font-size:13px;color:var(--muted);font-style:italic;padding:6px 0;">${lang === 'th' ? 'ไม่มีบันทึกเพิ่มเติม' : 'No additional notes'}</div>`;
+        }
+      } else {
+        list.forEach(txt => addNoteBlock(txt));
+      }
+    }
+
+    function addNoteBlock(text = '') {
+      const container = document.getElementById('notesContainer');
+      if (!container) return;
+      const canEdit = auth && (auth.role === 'owner' || auth.role === 'admin');
+      const count = container.querySelectorAll('.note-block').length + 1;
+      const div = document.createElement('div');
+      div.className = 'note-block';
+      div.style.cssText = 'display:flex;gap:8px;align-items:flex-start;background:#F9F8F6;border:1.5px solid var(--rule);border-radius:4px;padding:8px;';
+      div.innerHTML = `
+        <span class="mono note-index" style="font-size:12px;font-weight:700;color:var(--cobalt);padding-top:7px;min-width:24px;">#${count}</span>
+        <textarea class="note-input" rows="2" style="flex:1;background:#fff;" placeholder="${lang === 'th' ? 'ระบุข้อความบันทึก...' : 'Enter note details...'}" ${canEdit ? '' : 'disabled'}>${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+        ${canEdit ? `<button type="button" class="del-note-btn no-print" onclick="deleteNoteBlock(this)" style="background:#fee2e2;color:#991b1b;border-color:#fca5a5;padding:6px 10px;font-size:12px;cursor:pointer;margin-top:2px;">${lang === 'th' ? 'ลบ' : 'Delete'}</button>` : ''}
+      `;
+      container.appendChild(div);
+      reindexNotes();
+    }
+
+    function deleteNoteBlock(btn) {
+      const block = btn.closest('.note-block');
+      if (block) {
+        block.remove();
+        reindexNotes();
+        const container = document.getElementById('notesContainer');
+        if (container.querySelectorAll('.note-block').length === 0) {
+          addNoteBlock('');
+        }
+      }
+    }
+
+    function reindexNotes() {
+      const container = document.getElementById('notesContainer');
+      if (!container) return;
+      const blocks = container.querySelectorAll('.note-block');
+      blocks.forEach((b, idx) => {
+        const span = b.querySelector('.note-index');
+        if (span) span.textContent = '#' + (idx + 1);
+      });
+    }
+
     function viewDevice(d) {
       const t = I18N[lang];
       currentId = d.id;
@@ -922,9 +1010,12 @@
       modeSub.textContent = canEdit ? t.edit_mode : t.ro_mode;
       fields.forEach(k => {
         const el = document.getElementById('f_' + k);
-        el.value = d[k] || '';
-        el.disabled = !canEdit;
+        if (el) {
+          el.value = d[k] || '';
+          el.disabled = !canEdit;
+        }
       });
+      renderNotesBlocks(d.notes || '');
       if (document.getElementById('delDeviceBtn')) delDeviceBtn.classList.toggle('hidden', !canEdit);
       if (document.getElementById('delDeviceBottomBtn')) delDeviceBottomBtn.classList.toggle('hidden', !canEdit);
       renderPhotoState(d.photo || '');
@@ -942,10 +1033,13 @@
       modeSub.textContent = t.edit_mode;
       fields.forEach(k => {
         const el = document.getElementById('f_' + k);
-        el.value = ''; // completely blank - no sample data
-        el.placeholder = '';
-        el.disabled = false;
+        if (el) {
+          el.value = ''; // completely blank - no sample data
+          el.placeholder = '';
+          el.disabled = false;
+        }
       });
+      renderNotesBlocks('');
       if (document.getElementById('delDeviceBtn')) delDeviceBtn.classList.add('hidden');
       if (document.getElementById('delDeviceBottomBtn')) delDeviceBottomBtn.classList.add('hidden');
       renderPhotoState('');
@@ -992,7 +1086,11 @@
         return;
       }
       const payload = { photo: currentPhotoData };
-      fields.forEach(k => payload[k] = document.getElementById('f_' + k).value.trim());
+      fields.forEach(k => {
+        const el = document.getElementById('f_' + k);
+        if (el) payload[k] = el.value.trim();
+      });
+      payload.notes = getNotesData();
       if (!payload.sn) {
         payload.sn = 'SN-' + Math.floor(100000 + Math.random() * 900000);
       }
