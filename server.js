@@ -28,6 +28,10 @@ db.exec(`
     password_hash TEXT NOT NULL,
     role TEXT NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
 `);
 
 try { db.exec(`ALTER TABLE devices ADD COLUMN photo TEXT DEFAULT ''`); } catch {}
@@ -115,11 +119,25 @@ const server = http.createServer(async (req, res) => {
     return send(200, { token, username: u.username, role: u.role });
   }
 
+  // Public Custom Headings Read API
+  if (req.method === 'GET' && url.pathname === '/api/labels') {
+    const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('custom_labels');
+    return send(200, row ? JSON.parse(row.value) : {});
+  }
+
   const user = getAuth(req);
   if (!user) return send(401, { error: 'Unauthorized' });
 
   // RBAC: Owner and Admin accounts (owner, admin1, admin2) have full edit permissions
   const canEdit = user.role === 'owner' || user.role === 'admin';
+
+  // Custom Headings & Labels API (Owner & Admin only for saving)
+  if (req.method === 'POST' && url.pathname === '/api/labels') {
+    if (!canEdit) return send(403, { error: 'Forbidden: Viewer cannot edit headings' });
+    const labels = await readJson(req);
+    db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('custom_labels', JSON.stringify(labels || {}));
+    return send(200, { ok: true, labels });
+  }
 
   // Change Password endpoint for logged in user
   if (req.method === 'POST' && url.pathname === '/api/change-password') {

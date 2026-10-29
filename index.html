@@ -255,6 +255,7 @@
           <div class="row">
             <button id="addBtn" class="primary hidden" onclick="openForm()">+ <span id="t_add_btn">เพิ่มเครื่องใหม่</span></button>
             <button id="usersBtn" class="hidden" onclick="toggleUsersPanel()"><span id="t_users_btn">จัดการบัญชีผู้ใช้</span></button>
+            <button id="labelsBtn" class="hidden" onclick="toggleLabelsPanel()"><span id="t_labels_btn">แก้ไขหัวข้อ</span></button>
             <button id="pwdBtn" class="hidden" onclick="togglePwdPanel()"><span id="t_pwd_btn">เปลี่ยนรหัสผ่าน</span></button>
             <button onclick="window.print()" id="t_print_list_btn">พิมพ์รายการ</button>
             <button onclick="logout()" id="t_logout_btn">ออกจากระบบ</button>
@@ -304,6 +305,63 @@
         </div>
         <p id="userErr" style="color:#b91c1c;font-size:13px;margin:6px 0;"></p>
         <div id="usersList" style="margin-top:12px;"></div>
+      </section>
+
+      <!-- Custom Headings & Labels Editor Panel (Owner & Admin only) -->
+      <section id="labelsCard" class="panel hidden no-print">
+        <div class="row" style="border-bottom:2px solid var(--rule-dark);padding-bottom:10px;margin-bottom:12px;">
+          <div>
+            <strong id="t_labels_title" style="font-size:17px;">แก้ไขชื่อหัวข้อและชื่อช่อง (Edit Headings & Field Labels)</strong>
+            <div style="font-size:12.5px;color:var(--muted);margin-top:2px;">ปรับเปลี่ยนชื่อหัวข้อและหมวดหมู่ข้อมูลตามที่ต้องการ (เฉพาะ Owner และ Admin)</div>
+          </div>
+          <div class="row" style="gap:6px;">
+            <button type="button" onclick="resetLabelsToDefault()" style="font-size:12.5px;padding:6px 10px;">คืนค่าเริ่มต้น</button>
+            <button type="button" onclick="toggleLabelsPanel()">✕</button>
+          </div>
+        </div>
+
+        <form onsubmit="saveCustomLabels(event)">
+          <div style="margin-bottom:14px;">
+            <label style="font-weight:700;color:var(--cobalt);">ชื่อหัวข้อหลักหน้ารายการ (Registry Title)</label>
+            <input id="lbl_registry_title" placeholder="รายการเครื่องโทรศัพท์ทั้งหมด">
+          </div>
+
+          <div class="spec-header" style="margin-top:10px;"><span style="color:var(--cobalt)">หมวดที่ 1: ข้อมูลหลักเครื่อง</span><span class="mono">01</span></div>
+          <div class="grid">
+            <div><label>ชื่อหมวดที่ 1 (Section 1 Title)</label><input id="lbl_sec1" placeholder="ข้อมูลหมายเลขเครื่องและซิมการ์ด"></div>
+            <div><label>ชื่อช่อง SN</label><input id="lbl_sn" placeholder="หมายเลขเครื่อง (SN)"></div>
+            <div><label>ชื่อช่อง IMEI</label><input id="lbl_imei" placeholder="หมายเลข IMEI"></div>
+            <div><label>ชื่อช่อง เบอร์โทรศัพท์</label><input id="lbl_phone" placeholder="เบอร์โทรศัพท์ (Phone Number)"></div>
+            <div><label>ชื่อช่อง รุ่นและยี่ห้อ</label><input id="lbl_model" placeholder="รุ่นและยี่ห้อ (Model)"></div>
+            <div><label>ชื่อช่อง สถานะเครื่อง</label><input id="lbl_status" placeholder="สถานะเครื่อง (Status)"></div>
+          </div>
+
+          <div class="spec-header" style="margin-top:14px;"><span style="color:var(--cobalt)">หมวดที่ 2: ผู้ถือครอง</span><span class="mono">02</span></div>
+          <div class="grid">
+            <div><label>ชื่อหมวดที่ 2 (Section 2 Title)</label><input id="lbl_sec2" placeholder="ผู้ถือครองและหน่วยงาน"></div>
+            <div><label>ชื่อช่อง ผู้ถือครอง</label><input id="lbl_holder" placeholder="ชื่อผู้ถือครอง (Full Name)"></div>
+            <div><label>ชื่อช่อง แผนก / สาขา</label><input id="lbl_dept" placeholder="แผนก / สาขา (Department / Branch)"></div>
+          </div>
+
+          <div class="spec-header" style="margin-top:14px;"><span style="color:var(--cobalt)">หมวดที่ 3: รายละเอียดเพิ่มเติม</span><span class="mono">03</span></div>
+          <div class="grid">
+            <div><label>ชื่อหมวดที่ 3 (Section 3 Title)</label><input id="lbl_sec3" placeholder="รายละเอียดเพิ่มเติม"></div>
+            <div><label>ชื่อช่อง สีตัวเครื่อง</label><input id="lbl_color" placeholder="สีตัวเครื่อง (Color)"></div>
+            <div><label>ชื่อช่อง ความจุ</label><input id="lbl_cap" placeholder="ความจุ (Capacity)"></div>
+            <div><label>ชื่อช่อง อุปกรณ์เสริม</label><input id="lbl_acc" placeholder="อุปกรณ์เสริม (Accessories)"></div>
+            <div><label>ชื่อช่อง บันทึกเพิ่มเติม / หมายเหตุ</label><input id="lbl_notes" placeholder="บันทึกเพิ่มเติม (Notes)"></div>
+          </div>
+
+          <div class="spec-header" style="margin-top:14px;"><span style="color:var(--cobalt)">หมวดที่ 4: รูปภาพแนบ</span><span class="mono">04</span></div>
+          <div class="grid">
+            <div><label>ชื่อหมวดที่ 4 (Section 4 Title)</label><input id="lbl_sec4" placeholder="รูปภาพตัวเครื่อง / เอกสารแนบ"></div>
+          </div>
+
+          <div class="row" style="margin-top:16px;">
+            <button type="submit" class="primary" style="padding:9px 18px;">บันทึกการแก้ไขหัวข้อ</button>
+            <span id="labelsStatus" style="font-size:13px;font-weight:600;"></span>
+          </div>
+        </form>
       </section>
 
       <!-- Device Detail & Edit Sheet -->
@@ -422,6 +480,8 @@
         t_pwd_title: 'เปลี่ยนรหัสผ่านของฉัน (Change Password)',
         t_my_new_pass: 'รหัสผ่านใหม่ (New Password)',
         t_save_pwd_btn: 'บันทึกรหัสผ่านใหม่',
+        t_labels_btn: 'แก้ไขหัวข้อ',
+        t_labels_title: 'แก้ไขชื่อหัวข้อและชื่อช่อง (Edit Headings & Field Labels)',
         edit_mode: 'สิทธิ์ Owner / Admin — มีสิทธิ์แก้ไขข้อมูลทั้งหมด จัดการผู้ใช้งาน และเปลี่ยนรหัสผ่านได้',
         ro_mode: 'สิทธิ์ผู้ใช้ทั่วไป (Viewer) — ดูและสั่งพิมพ์ได้อย่างเดียว (ไม่มีสิทธิ์แก้ไข)',
         new_device: 'เพิ่มข้อมูลเครื่องใหม่',
@@ -466,6 +526,8 @@
         t_pwd_title: 'Change Account Password',
         t_my_new_pass: 'New Password',
         t_save_pwd_btn: 'Save new password',
+        t_labels_btn: 'Edit Headings',
+        t_labels_title: 'Edit Headings & Field Labels',
         edit_mode: 'Owner / Admin access — Full edit permissions, user management & password change enabled',
         ro_mode: 'Viewer access — Read-only & print only (no edit rights)',
         new_device: 'Register new device',
@@ -475,8 +537,24 @@
       }
     };
 
+    let customLabels = {};
+    const LABEL_KEYS = ['registry_title', 'sec1', 'sn', 'imei', 'phone', 'model', 'status', 'sec2', 'holder', 'dept', 'sec3', 'color', 'cap', 'acc', 'notes', 'sec4'];
+
+    async function loadCustomLabels() {
+      try {
+        const r = await fetch('/api/labels');
+        if (r.ok) {
+          customLabels = await r.json() || {};
+        }
+      } catch {
+        const raw = localStorage.getItem('phone_hub_custom_labels');
+        if (raw) customLabels = JSON.parse(raw);
+      }
+    }
+
     function applyLang() {
-      const t = I18N[lang];
+      const base = I18N[lang];
+      const t = { ...base, ...customLabels };
       document.documentElement.lang = lang;
       langBtn.textContent = lang === 'th' ? 'เปลี่ยนภาษา: EN' : 'Language: TH';
       t_subtitle.textContent = t.subtitle;
@@ -487,6 +565,9 @@
       t_signin_btn.textContent = t.signin_btn;
       t_registry_title.textContent = t.registry_title;
       t_add_btn.textContent = t.add_btn;
+      t_users_btn.textContent = t.t_users_btn || (lang === 'th' ? 'จัดการบัญชีผู้ใช้' : 'Users');
+      t_pwd_btn.textContent = t.t_pwd_btn;
+      t_labels_btn.textContent = t.t_labels_btn;
       t_print_list_btn.textContent = t.print_list_btn;
       t_logout_btn.textContent = t.logout_btn;
       searchIn.placeholder = t.search_ph;
@@ -511,10 +592,10 @@
       clearPhotoBtn.textContent = t.clear_photo;
       noPhotoText.textContent = t.no_photo;
       saveBtn.textContent = t.save_btn;
-      t_pwd_btn.textContent = t.t_pwd_btn;
       t_pwd_title.textContent = t.t_pwd_title;
       t_my_new_pass.textContent = t.t_my_new_pass;
       t_save_pwd_btn.textContent = t.t_save_pwd_btn;
+      t_labels_title.textContent = t.t_labels_title;
       if (auth) {
         const canEdit = auth.role === 'owner' || auth.role === 'admin';
         modeSub.textContent = canEdit ? t.edit_mode : t.ro_mode;
@@ -565,10 +646,11 @@
       const canEdit = auth.role === 'owner' || auth.role === 'admin';
       addBtn.classList.toggle('hidden', !canEdit);
       usersBtn.classList.toggle('hidden', !canEdit);
+      labelsBtn.classList.toggle('hidden', !canEdit);
       pwdBtn.classList.remove('hidden');
       saveBtn.classList.toggle('hidden', !canEdit);
       photoControls.classList.toggle('hidden', !canEdit);
-      applyLang();
+      loadCustomLabels().then(() => applyLang());
     }
 
     function getLocalUsers() {
@@ -683,10 +765,70 @@
       loadUsers();
     }
 
+    function toggleLabelsPanel() {
+      labelsCard.classList.toggle('hidden');
+      if (!labelsCard.classList.contains('hidden')) {
+        populateLabelsForm();
+      }
+    }
+
+    function populateLabelsForm() {
+      const base = I18N[lang];
+      LABEL_KEYS.forEach(k => {
+        const el = document.getElementById('lbl_' + k);
+        if (el) {
+          el.value = customLabels[k] || '';
+          el.placeholder = base[k] || '';
+        }
+      });
+      labelsStatus.textContent = '';
+    }
+
+    async function saveCustomLabels(e) {
+      if (e) e.preventDefault();
+      const updated = {};
+      LABEL_KEYS.forEach(k => {
+        const el = document.getElementById('lbl_' + k);
+        if (el && el.value.trim()) {
+          updated[k] = el.value.trim();
+        }
+      });
+      customLabels = updated;
+      try {
+        await fetch('/api/labels', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth.token}` },
+          body: JSON.stringify(customLabels)
+        });
+      } catch {}
+      localStorage.setItem('phone_hub_custom_labels', JSON.stringify(customLabels));
+      labelsStatus.style.color = '#15803d';
+      labelsStatus.textContent = lang === 'th' ? 'บันทึกชื่อหัวข้อเรียบร้อยแล้ว' : 'Headings saved successfully';
+      loadCustomLabels().then(() => applyLang());
+    }
+
+    async function resetLabelsToDefault() {
+      if (!confirm(lang === 'th' ? 'ยืนยันคืนค่าชื่อหัวข้อเริ่มต้นทั้งหมด?' : 'Reset all headings to default?')) return;
+      customLabels = {};
+      try {
+        await fetch('/api/labels', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth.token}` },
+          body: JSON.stringify({})
+        });
+      } catch {}
+      localStorage.removeItem('phone_hub_custom_labels');
+      populateLabelsForm();
+      labelsStatus.style.color = '#15803d';
+      labelsStatus.textContent = lang === 'th' ? 'คืนค่าเริ่มต้นเรียบร้อยแล้ว' : 'Headings reset to default';
+      loadCustomLabels().then(() => applyLang());
+    }
+
     function logout() {
       auth = null;
       pwdCard.classList.add('hidden');
       usersCard.classList.add('hidden');
+      labelsCard.classList.add('hidden');
       detailCard.classList.add('hidden');
       appBox.classList.add('hidden');
       loginBox.classList.remove('hidden');
@@ -833,7 +975,7 @@
       loadDevices();
     }
 
-    applyLang();
+    loadCustomLabels().then(() => applyLang());
   </script>
 </body>
 </html>
