@@ -194,6 +194,54 @@
       display: block;
     }
 
+    /* Note blocks responsive ledger style (Mobile & Tablet optimized) */
+    .note-block {
+      background: #F9F8F6;
+      border: 1.5px solid var(--rule);
+      border-radius: 4px;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      width: 100%;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .note-block-top {
+      display: flex;
+      width: 100%;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .note-block .note-index {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--cobalt);
+    }
+    .note-block .note-input {
+      width: 100% !important;
+      min-width: 0 !important;
+      box-sizing: border-box;
+      background: #fff;
+      border: 1.5px solid var(--rule);
+      border-radius: 4px;
+      padding: 9px 12px;
+      font-size: 14.5px;
+      line-height: 1.45;
+      min-height: 58px;
+      resize: vertical;
+    }
+    .note-block .del-note-btn {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fca5a5;
+      border-radius: 3px;
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
     .hidden { display: none !important; }
 
     @media (max-width: 600px) {
@@ -335,6 +383,8 @@
             <div><label>ชื่อช่อง รุ่นและยี่ห้อ</label><input id="lbl_model" placeholder="รุ่นและยี่ห้อ (Model)"></div>
             <div><label>ชื่อช่อง สถานะเครื่อง</label><input id="lbl_status" placeholder="สถานะเครื่อง (Status)"></div>
           </div>
+          <div id="sec1_custom_list" style="display:flex;flex-direction:column;gap:6px;margin-top:10px;"></div>
+          <button type="button" onclick="addCustomFieldConfig('sec1')" style="margin-top:8px;font-size:12.5px;padding:6px 12px;background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe;border-radius:4px;cursor:pointer;font-weight:600;">+ เพิ่มหัวข้อใหม่ในหมวดที่ 1</button>
 
           <div class="spec-header" style="margin-top:14px;"><span style="color:var(--cobalt)">หมวดที่ 2: ผู้ถือครอง</span><span class="mono">02</span></div>
           <div class="grid">
@@ -342,6 +392,8 @@
             <div><label>ชื่อช่อง ผู้ถือครอง</label><input id="lbl_holder" placeholder="ชื่อผู้ถือครอง (Full Name)"></div>
             <div><label>ชื่อช่อง แผนก / สาขา</label><input id="lbl_dept" placeholder="แผนก / สาขา (Department / Branch)"></div>
           </div>
+          <div id="sec2_custom_list" style="display:flex;flex-direction:column;gap:6px;margin-top:10px;"></div>
+          <button type="button" onclick="addCustomFieldConfig('sec2')" style="margin-top:8px;font-size:12.5px;padding:6px 12px;background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe;border-radius:4px;cursor:pointer;font-weight:600;">+ เพิ่มหัวข้อใหม่ในหมวดที่ 2</button>
 
           <div class="spec-header" style="margin-top:14px;"><span style="color:var(--cobalt)">หมวดที่ 3: รายละเอียดเพิ่มเติม</span><span class="mono">03</span></div>
           <div class="grid">
@@ -351,11 +403,15 @@
             <div><label>ชื่อช่อง อุปกรณ์เสริม</label><input id="lbl_acc" placeholder="อุปกรณ์เสริม (Accessories)"></div>
             <div><label>ชื่อช่อง บันทึกเพิ่มเติม / หมายเหตุ</label><input id="lbl_notes" placeholder="บันทึกเพิ่มเติม (Notes)"></div>
           </div>
+          <div id="sec3_custom_list" style="display:flex;flex-direction:column;gap:6px;margin-top:10px;"></div>
+          <button type="button" onclick="addCustomFieldConfig('sec3')" style="margin-top:8px;font-size:12.5px;padding:6px 12px;background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe;border-radius:4px;cursor:pointer;font-weight:600;">+ เพิ่มหัวข้อใหม่ในหมวดที่ 3</button>
 
           <div class="spec-header" style="margin-top:14px;"><span style="color:var(--cobalt)">หมวดที่ 4: รูปภาพแนบ</span><span class="mono">04</span></div>
           <div class="grid">
             <div><label>ชื่อหมวดที่ 4 (Section 4 Title)</label><input id="lbl_sec4" placeholder="รูปภาพตัวเครื่อง / เอกสารแนบ"></div>
           </div>
+          <div id="sec4_custom_list" style="display:flex;flex-direction:column;gap:6px;margin-top:10px;"></div>
+          <button type="button" onclick="addCustomFieldConfig('sec4')" style="margin-top:8px;font-size:12.5px;padding:6px 12px;background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe;border-radius:4px;cursor:pointer;font-weight:600;">+ เพิ่มหัวข้อใหม่ในหมวดที่ 4</button>
 
           <div class="row" style="margin-top:16px;">
             <button type="submit" class="primary" style="padding:9px 18px;">บันทึกการแก้ไขหัวข้อ</button>
@@ -394,12 +450,14 @@
             </select>
           </div>
         </div>
+        <div id="sec1_custom_fields" class="grid" style="margin-top:10px;"></div>
 
         <div class="spec-header"><span id="t_sec2">ผู้ถือครองและหน่วยงาน</span><span class="mono">02</span></div>
         <div class="grid">
           <div><label id="t_holder">ชื่อผู้ถือครอง (Full Name)</label><input id="f_holder"></div>
           <div><label id="t_dept">แผนก / สาขา (Department / Branch)</label><input id="f_department"></div>
         </div>
+        <div id="sec2_custom_fields" class="grid" style="margin-top:10px;"></div>
 
         <div class="spec-header"><span id="t_sec3">รายละเอียดเพิ่มเติม</span><span class="mono">03</span></div>
         <div class="grid">
@@ -407,6 +465,7 @@
           <div><label id="t_cap">ความจุ (Capacity)</label><input id="f_capacity"></div>
           <div><label id="t_acc">อุปกรณ์เสริม (Accessories)</label><input id="f_accessories"></div>
         </div>
+        <div id="sec3_custom_fields" class="grid" style="margin-top:10px;"></div>
         <div style="margin-top:14px">
           <div class="row" style="margin-bottom:8px;">
             <label id="t_notes" style="margin:0;font-weight:700;">บันทึกเพิ่มเติม (Notes)</label>
@@ -422,16 +481,20 @@
 
         <!-- Bottom Image Upload & Display Section -->
         <div class="spec-header"><span id="t_sec4">รูปภาพตัวเครื่อง / เอกสารแนบ</span><span class="mono">04</span></div>
+        <div id="sec4_custom_fields" class="grid" style="margin-bottom:12px;"></div>
         <div class="photo-zone">
-          <div class="row no-print" id="photoControls">
-            <label class="file-label" style="margin:0;color:var(--ink);">
-              <span id="t_upload_btn">เลือกรูปภาพ / ถ่ายรูปจากมือถือ</span>
-              <input id="f_photo_in" type="file" accept="image/*" style="display:none" onchange="handlePhoto(event)">
+          <div class="row no-print" id="photoControls" style="align-items:center;margin-bottom:12px;gap:10px;">
+            <label class="file-label" style="margin:0;cursor:pointer;background:#e0e7ff;border:1.5px solid #c7d2fe;color:#3730a3;font-weight:700;">
+              <span id="t_upload_btn">📷 + เพิ่มรูปภาพ / ถ่ายรูป (ไม่จำกัดจำนวน)</span>
+              <input id="f_photo_in" type="file" accept="image/*" multiple style="display:none" onchange="handlePhotos(event)">
             </label>
-            <button type="button" id="clearPhotoBtn" onclick="clearPhoto()" class="hidden" style="font-size:12.5px;padding:6px 10px;">ลบรูปภาพ</button>
+            <div class="row" style="gap:8px;">
+              <span id="photoCountBadge" class="mono" style="font-size:13px;font-weight:700;color:var(--cobalt);padding:6px 12px;background:#fff;border:1px solid var(--rule);border-radius:4px;">0 รูป</span>
+              <button type="button" id="clearAllPhotosBtn" onclick="clearAllPhotos()" class="hidden" style="font-size:12.5px;padding:6px 12px;background:#fee2e2;color:#991b1b;border-color:#fca5a5;">ลบรูปทั้งหมด</button>
+            </div>
           </div>
-          <div id="noPhotoText" style="font-size:13px;color:var(--muted);margin-top:6px;">ยังไม่มีรูปภาพแนบ</div>
-          <img id="photoPreview" class="photo-preview hidden" alt="Device Photo">
+          <div id="noPhotoText" style="font-size:13.5px;color:var(--muted);font-style:italic;padding:8px 0;">ยังไม่มีรูปภาพแนบ (สามารถแนบรูปภาพได้ไม่จำกัดจำนวน)</div>
+          <div id="photoGrid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(120px, 1fr));gap:12px;margin-top:8px;"></div>
         </div>
 
         <p id="formErr" style="color:#b91c1c;font-size:13.5px;font-weight:600;margin:10px 0 0;"></p>
@@ -443,6 +506,16 @@
 
       <!-- Device List -->
       <section id="listBox"></section>
+
+      <!-- Lightbox Modal for Photo Full View -->
+      <div id="imgModal" class="hidden no-print" onclick="closeImgModal()" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.88);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;">
+        <div style="position:relative;max-width:94vw;max-height:90vh;display:flex;flex-direction:column;align-items:center;" onclick="event.stopPropagation()">
+          <img id="modalImg" src="" style="max-width:100%;max-height:80vh;object-fit:contain;border-radius:6px;box-shadow:0 8px 30px rgba(0,0,0,0.6);">
+          <div style="margin-top:12px;">
+            <button type="button" onclick="closeImgModal()" style="background:#fff;color:#000;font-weight:700;padding:8px 20px;border-radius:4px;cursor:pointer;">✕ ปิดรูปภาพ (Close)</button>
+          </div>
+        </div>
+      </div>
     </main>
   </div>
 
@@ -450,7 +523,7 @@
     let lang = 'th';
     let auth = null;
     let currentId = null;
-    let currentPhotoData = '';
+    let currentPhotos = [];
     const fields = ['sn','imei','phone','model','holder','department','status','color','capacity','accessories'];
 
     const I18N = {
@@ -608,7 +681,7 @@
       t_acc.textContent = t.acc;
       t_notes.textContent = t.notes;
       t_upload_btn.textContent = t.upload_btn;
-      clearPhotoBtn.textContent = t.clear_photo;
+      if (document.getElementById('clearAllPhotosBtn')) clearAllPhotosBtn.textContent = t.clear_photo || (lang === 'th' ? 'ลบรูปทั้งหมด' : 'Delete all photos');
       noPhotoText.textContent = t.no_photo;
       saveBtn.textContent = t.save_btn;
       t_pwd_title.textContent = t.t_pwd_title;
@@ -619,6 +692,7 @@
       if (document.getElementById('delDeviceBottomBtn')) delDeviceBottomBtn.textContent = t.del_device_short || 'ลบเครื่องนี้';
       if (document.getElementById('addNoteBtn')) addNoteBtn.textContent = t.add_note_btn || '+ เพิ่มบล็อกโน้ต';
       if (document.getElementById('addNoteBottomBtn')) addNoteBottomBtn.textContent = t.add_note_bottom_btn || '+ เพิ่มบล็อกโน้ตใหม่';
+      renderCustomFieldsInForm();
       if (auth) {
         const canEdit = auth.role === 'owner' || auth.role === 'admin';
         modeSub.textContent = canEdit ? t.edit_mode : t.ro_mode;
@@ -796,6 +870,25 @@
       }
     }
 
+    function addCustomFieldConfig(secKey, label = '', id = '') {
+      const list = document.getElementById(secKey + '_custom_list');
+      if (!list) return;
+      const fieldId = id || ('cf_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5));
+      const row = document.createElement('div');
+      row.className = 'custom-config-row';
+      row.setAttribute('data-sec', secKey);
+      row.setAttribute('data-cf-id', fieldId);
+      row.style.cssText = 'display:flex;gap:8px;align-items:center;background:#FAF9F6;padding:6px 10px;border:1px solid var(--rule);border-radius:4px;margin-bottom:4px;';
+      row.innerHTML = `
+        <span class="mono" style="font-size:12px;color:var(--cobalt);font-weight:700;white-space:nowrap;">+ หัวข้อ:</span>
+        <input class="custom-field-label-input" value="${(label || '').replace(/"/g, '&quot;')}" placeholder="เช่น ธนาคาร, เลขที่บัญชี, TAC Phone" style="flex:1;">
+        <button type="button" onclick="this.closest('.custom-config-row').remove()" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;padding:5px 10px;font-size:12px;cursor:pointer;white-space:nowrap;">ลบ</button>
+      `;
+      list.appendChild(row);
+      const inp = row.querySelector('.custom-field-label-input');
+      if (!label && inp) inp.focus();
+    }
+
     function populateLabelsForm() {
       const base = I18N[lang];
       LABEL_KEYS.forEach(k => {
@@ -805,6 +898,18 @@
           el.placeholder = base[k] || '';
         }
       });
+
+      // Populate custom fields per section
+      ['sec1', 'sec2', 'sec3', 'sec4'].forEach(sec => {
+        const container = document.getElementById(sec + '_custom_list');
+        if (!container) return;
+        container.innerHTML = '';
+        const list = (customLabels.sections && customLabels.sections[sec]) || [];
+        list.forEach(f => {
+          addCustomFieldConfig(sec, f.name, f.id);
+        });
+      });
+
       labelsStatus.textContent = '';
     }
 
@@ -817,6 +922,22 @@
           updated[k] = el.value.trim();
         }
       });
+
+      updated.sections = { sec1: [], sec2: [], sec3: [], sec4: [] };
+      ['sec1', 'sec2', 'sec3', 'sec4'].forEach(sec => {
+        const container = document.getElementById(sec + '_custom_list');
+        if (container) {
+          container.querySelectorAll('.custom-config-row').forEach(row => {
+            const id = row.getAttribute('data-cf-id');
+            const inp = row.querySelector('.custom-field-label-input');
+            const name = inp ? inp.value.trim() : '';
+            if (name) {
+              updated.sections[sec].push({ id, name });
+            }
+          });
+        }
+      });
+
       customLabels = updated;
       try {
         await fetch('/api/labels', {
@@ -848,6 +969,25 @@
       loadCustomLabels().then(() => applyLang());
     }
 
+    function renderCustomFieldsInForm() {
+      const canEdit = auth && (auth.role === 'owner' || auth.role === 'admin');
+      ['sec1', 'sec2', 'sec3', 'sec4'].forEach(sec => {
+        const container = document.getElementById(sec + '_custom_fields');
+        if (!container) return;
+        container.innerHTML = '';
+        const list = (customLabels.sections && customLabels.sections[sec]) || [];
+        list.forEach(f => {
+          const div = document.createElement('div');
+          div.className = 'cf-field-box';
+          div.innerHTML = `
+            <label style="font-weight:600;color:var(--cobalt);">${f.name}</label>
+            <input class="cf-input" data-cf-id="${f.id}" placeholder="${f.name}" ${canEdit ? '' : 'disabled'}>
+          `;
+          container.appendChild(div);
+        });
+      });
+    }
+
     function logout() {
       auth = null;
       localStorage.removeItem('phone_hub_auth_v2');
@@ -859,47 +999,114 @@
       loginBox.classList.remove('hidden');
     }
 
-    function renderPhotoState(dataUrl) {
-      currentPhotoData = dataUrl || '';
-      const canEdit = auth && (auth.role === 'owner' || auth.role === 'admin');
-      if (currentPhotoData) {
-        photoPreview.src = currentPhotoData;
-        photoPreview.classList.remove('hidden');
-        noPhotoText.classList.add('hidden');
-        clearPhotoBtn.classList.toggle('hidden', !canEdit);
-      } else {
-        photoPreview.src = '';
-        photoPreview.classList.add('hidden');
-        noPhotoText.classList.remove('hidden');
-        clearPhotoBtn.classList.add('hidden');
+    function renderPhotoState(photoData) {
+      currentPhotos = [];
+      if (photoData) {
+        if (Array.isArray(photoData)) {
+          currentPhotos = photoData;
+        } else {
+          try {
+            const parsed = JSON.parse(photoData);
+            if (Array.isArray(parsed)) currentPhotos = parsed;
+            else if (typeof parsed === 'string' && parsed.trim()) currentPhotos = [parsed];
+          } catch {
+            if (typeof photoData === 'string' && photoData.trim()) currentPhotos = [photoData];
+          }
+        }
       }
+      renderPhotoGrid();
     }
 
-    function handlePhoto(e) {
-      const file = e.target.files && e.target.files[0];
-      if (!file) return;
-      // Compress via canvas so smartphone photos fit smoothly in SQLite / localStorage
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const img = new Image();
-        img.onload = () => {
-          const maxW = 1600;
-          const scale = img.width > maxW ? maxW / img.width : 1;
-          const canvas = document.createElement('canvas');
-          canvas.width = Math.round(img.width * scale);
-          canvas.height = Math.round(img.height * scale);
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          renderPhotoState(canvas.toDataURL('image/jpeg', 0.85));
-        };
-        img.src = ev.target.result;
-      };
-      reader.readAsDataURL(file);
+    function renderPhotoGrid() {
+      const grid = document.getElementById('photoGrid');
+      const noText = document.getElementById('noPhotoText');
+      const countBadge = document.getElementById('photoCountBadge');
+      const clearBtn = document.getElementById('clearAllPhotosBtn');
+      const canEdit = auth && (auth.role === 'owner' || auth.role === 'admin');
+
+      if (!grid) return;
+      grid.innerHTML = '';
+      if (countBadge) countBadge.textContent = `${currentPhotos.length} รูป`;
+
+      if (currentPhotos.length === 0) {
+        if (noText) noText.classList.remove('hidden');
+        if (clearBtn) clearBtn.classList.add('hidden');
+        return;
+      }
+
+      if (noText) noText.classList.add('hidden');
+      if (clearBtn) clearBtn.classList.toggle('hidden', !canEdit);
+
+      currentPhotos.forEach((src, idx) => {
+        const card = document.createElement('div');
+        card.style.cssText = 'position:relative;border:1.5px solid var(--rule-dark);border-radius:6px;overflow:hidden;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.08);';
+        card.innerHTML = `
+          <img src="${src}" alt="Photo ${idx + 1}" style="width:100%;height:120px;object-fit:cover;display:block;cursor:pointer;" onclick="openImgModal('${src}')">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;background:#F9F8F6;border-top:1px solid var(--rule);font-size:12px;">
+            <span class="mono" style="font-weight:700;color:var(--cobalt);">#${idx + 1}</span>
+            ${canEdit ? `<button type="button" onclick="deletePhoto(${idx})" class="no-print" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;padding:2px 8px;font-size:11px;border-radius:3px;cursor:pointer;">ลบ</button>` : ''}
+          </div>
+        `;
+        grid.appendChild(card);
+      });
     }
 
-    function clearPhoto() {
-      f_photo_in.value = '';
-      renderPhotoState('');
+    function handlePhotos(e) {
+      const files = e.target.files;
+      if (!files || files.length === 0) return;
+      const readers = [];
+      Array.from(files).forEach(file => {
+        readers.push(new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            const img = new Image();
+            img.onload = () => {
+              const maxW = 1200;
+              const scale = img.width > maxW ? maxW / img.width : 1;
+              const canvas = document.createElement('canvas');
+              canvas.width = Math.round(img.width * scale);
+              canvas.height = Math.round(img.height * scale);
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+              resolve(canvas.toDataURL('image/jpeg', 0.8));
+            };
+            img.onerror = () => resolve('');
+            img.src = ev.target.result;
+          };
+          reader.onerror = () => resolve('');
+          reader.readAsDataURL(file);
+        }));
+      });
+
+      Promise.all(readers).then(dataUrls => {
+        dataUrls.filter(Boolean).forEach(url => currentPhotos.push(url));
+        if (f_photo_in) f_photo_in.value = '';
+        renderPhotoGrid();
+      });
+    }
+
+    function deletePhoto(idx) {
+      currentPhotos.splice(idx, 1);
+      renderPhotoGrid();
+    }
+
+    function clearAllPhotos() {
+      if (!confirm(lang === 'th' ? 'ต้องการลบรูปภาพทั้งหมดของเครื่องนี้ใช่หรือไม่?' : 'Delete all photos for this device?')) return;
+      currentPhotos = [];
+      if (f_photo_in) f_photo_in.value = '';
+      renderPhotoGrid();
+    }
+
+    function openImgModal(src) {
+      if (!modalImg || !imgModal) return;
+      modalImg.src = src;
+      imgModal.classList.remove('hidden');
+    }
+
+    function closeImgModal() {
+      if (!imgModal) return;
+      imgModal.classList.add('hidden');
+      if (modalImg) modalImg.src = '';
     }
 
     async function loadDevices() {
@@ -912,23 +1119,44 @@
         rows = await r.json();
       } catch {
         rows = getLocalDevices().filter(d =>
-          !q || [d.sn, d.phone, d.imei, d.holder, d.model, d.department].some(v => String(v || '').toLowerCase().includes(q))
+          !q || [d.sn, d.phone, d.imei, d.holder, d.model, d.department, d.notes, d.custom_fields].some(v => String(v || '').toLowerCase().includes(q))
         );
       }
-      listBox.innerHTML = rows.map(d => `
-        <article class="device-item" onclick='viewDevice(${JSON.stringify(d).replace(/'/g, "&#39;")})'>
-          ${d.photo ? `<img class="thumb" src="${d.photo}" alt="thumb">` : `<div class="thumb mono">NO<br>IMG</div>`}
-          <div>
-            <div style="font-weight:700;font-size:16px;">${d.model} <span class="mono" style="color:var(--cobalt);margin-left:6px;">${d.sn}</span></div>
-            <div style="font-size:13.5px;color:var(--muted);margin-top:2px;">
-              ${t.lbl_phone}: <strong class="mono" style="color:var(--ink)">${d.phone || '-'}</strong> &nbsp;|&nbsp;
-              IMEI: <span class="mono">${d.imei || '-'}</span> &nbsp;|&nbsp;
-              ${t.lbl_holder}: <strong>${d.holder || '-'}</strong> (${d.department || '-'})
+      listBox.innerHTML = rows.map(d => {
+        let thumbHtml = '<div class="thumb mono">NO<br>IMG</div>';
+        let photoList = [];
+        if (d.photo) {
+          try {
+            const parsed = JSON.parse(d.photo);
+            if (Array.isArray(parsed)) photoList = parsed;
+            else if (parsed) photoList = [parsed];
+          } catch {
+            if (d.photo) photoList = [d.photo];
+          }
+        }
+        if (photoList.length > 0) {
+          thumbHtml = `
+            <div style="position:relative;width:56px;height:56px;flex-shrink:0;">
+              <img class="thumb" src="${photoList[0]}" alt="thumb" style="width:56px;height:56px;object-fit:cover;">
+              ${photoList.length > 1 ? `<span style="position:absolute;bottom:2px;right:2px;background:rgba(0,0,0,0.8);color:#fff;font-size:9.5px;padding:1px 4px;border-radius:2px;font-family:'JetBrains Mono';font-weight:700;">+${photoList.length - 1}</span>` : ''}
             </div>
-          </div>
-          <span class="tag ${String(d.status).toLowerCase()}">${d.status}</span>
-        </article>
-      `).join('') || `<div class="panel">${t.empty}</div>`;
+          `;
+        }
+        return `
+          <article class="device-item" onclick='viewDevice(${JSON.stringify(d).replace(/'/g, "&#39;")})'>
+            ${thumbHtml}
+            <div>
+              <div style="font-weight:700;font-size:16px;">${d.model} <span class="mono" style="color:var(--cobalt);margin-left:6px;">${d.sn}</span></div>
+              <div style="font-size:13.5px;color:var(--muted);margin-top:2px;">
+                ${t.lbl_phone}: <strong class="mono" style="color:var(--ink)">${d.phone || '-'}</strong> &nbsp;|&nbsp;
+                IMEI: <span class="mono">${d.imei || '-'}</span> &nbsp;|&nbsp;
+                ${t.lbl_holder}: <strong>${d.holder || '-'}</strong> (${d.department || '-'})
+              </div>
+            </div>
+            <span class="tag ${String(d.status).toLowerCase()}">${d.status}</span>
+          </article>
+        `;
+      }).join('') || `<div class="panel">${t.empty}</div>`;
     }
 
     function getNotesData() {
@@ -968,11 +1196,7 @@
       }
 
       if (list.length === 0) {
-        if (canEdit) {
-          addNoteBlock('');
-        } else {
-          container.innerHTML = `<div style="font-size:13px;color:var(--muted);font-style:italic;padding:6px 0;">${lang === 'th' ? 'ไม่มีบันทึกเพิ่มเติม' : 'No additional notes'}</div>`;
-        }
+        addNoteBlock('');
       } else {
         list.forEach(txt => addNoteBlock(txt));
       }
@@ -987,34 +1211,23 @@
 
       const div = document.createElement('div');
       div.className = 'note-block';
-      div.style.cssText = 'display:flex;gap:8px;align-items:flex-start;background:#F9F8F6;border:1.5px solid var(--rule);border-radius:4px;padding:8px;margin-bottom:6px;';
 
-      const badge = document.createElement('span');
-      badge.className = 'mono note-index';
-      badge.style.cssText = 'font-size:12px;font-weight:700;color:var(--cobalt);padding-top:7px;min-width:26px;';
-      badge.textContent = '#' + count;
+      const top = document.createElement('div');
+      top.className = 'note-block-top';
+      top.innerHTML = `
+        <span class="mono note-index">#${count} ${lang === 'th' ? 'บันทึกข้อความ' : 'Note Details'}</span>
+        ${canEdit ? `<button type="button" class="del-note-btn no-print" onclick="deleteNoteBlock(this)">${lang === 'th' ? 'ลบโน้ตนี้' : 'Delete'}</button>` : ''}
+      `;
 
       const ta = document.createElement('textarea');
       ta.className = 'note-input';
       ta.rows = 2;
-      ta.style.cssText = 'flex:1;background:#fff;border:1px solid var(--rule);border-radius:3px;padding:6px;font-family:inherit;font-size:13.5px;line-height:1.4;resize:vertical;';
       ta.placeholder = lang === 'th' ? 'ระบุข้อความบันทึก...' : 'Enter note details...';
       ta.disabled = !canEdit;
       ta.value = noteText;
 
-      div.appendChild(badge);
+      div.appendChild(top);
       div.appendChild(ta);
-
-      if (canEdit) {
-        const delBtn = document.createElement('button');
-        delBtn.type = 'button';
-        delBtn.className = 'del-note-btn no-print';
-        delBtn.style.cssText = 'background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;border-radius:3px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;margin-top:2px;white-space:nowrap;';
-        delBtn.textContent = lang === 'th' ? 'ลบ' : 'Delete';
-        delBtn.onclick = function() { deleteNoteBlock(this); };
-        div.appendChild(delBtn);
-      }
-
       container.appendChild(div);
       reindexNotes();
       return ta;
@@ -1038,7 +1251,7 @@
       const blocks = container.querySelectorAll('.note-block');
       blocks.forEach((b, idx) => {
         const span = b.querySelector('.note-index');
-        if (span) span.textContent = '#' + (idx + 1);
+        if (span) span.textContent = '#' + (idx + 1) + (lang === 'th' ? ' บันทึกข้อความ' : ' Note Details');
       });
     }
 
@@ -1055,6 +1268,18 @@
           el.disabled = !canEdit;
         }
       });
+
+      // Populate custom fields
+      let cfData = {};
+      try {
+        cfData = typeof d.custom_fields === 'string' ? JSON.parse(d.custom_fields || '{}') : (d.custom_fields || {});
+      } catch {}
+      document.querySelectorAll('.cf-input').forEach(inp => {
+        const id = inp.getAttribute('data-cf-id');
+        inp.value = cfData[id] || '';
+        inp.disabled = !canEdit;
+      });
+
       renderNotesBlocks(d.notes || '');
       if (document.getElementById('delDeviceBtn')) delDeviceBtn.classList.toggle('hidden', !canEdit);
       if (document.getElementById('delDeviceBottomBtn')) delDeviceBottomBtn.classList.toggle('hidden', !canEdit);
@@ -1079,6 +1304,13 @@
           el.disabled = false;
         }
       });
+
+      // Clear all custom fields
+      document.querySelectorAll('.cf-input').forEach(inp => {
+        inp.value = '';
+        inp.disabled = false;
+      });
+
       renderNotesBlocks('');
       if (document.getElementById('delDeviceBtn')) delDeviceBtn.classList.add('hidden');
       if (document.getElementById('delDeviceBottomBtn')) delDeviceBottomBtn.classList.add('hidden');
@@ -1125,12 +1357,21 @@
         formErr.textContent = lang === 'th' ? 'สิทธิ์ Viewer ไม่สามารถบันทึกหรือแก้ไขข้อมูลได้' : 'Viewer cannot edit or save records';
         return;
       }
-      const payload = { photo: currentPhotoData };
+      const payload = { photo: JSON.stringify(currentPhotos) };
       fields.forEach(k => {
         const el = document.getElementById('f_' + k);
         if (el) payload[k] = el.value.trim();
       });
+
+      // Collect custom fields
+      const cfData = {};
+      document.querySelectorAll('.cf-input').forEach(inp => {
+        const id = inp.getAttribute('data-cf-id');
+        cfData[id] = inp.value.trim();
+      });
+      payload.custom_fields = JSON.stringify(cfData);
       payload.notes = getNotesData();
+
       if (!payload.sn) {
         payload.sn = 'SN-' + Math.floor(100000 + Math.random() * 900000);
       }
