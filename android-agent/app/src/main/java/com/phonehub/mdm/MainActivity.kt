@@ -36,26 +36,31 @@ class MainActivity : Activity() {
 
         val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val adminComp = ComponentName(this, MdmAdminReceiver::class.java)
-        val isOwner = dpm.isDeviceOwnerApp(packageName)
-        val isAdmin = dpm.isAdminActive(adminComp)
+        val isOwner = try { dpm.isDeviceOwnerApp(packageName) } catch (_: Throwable) { false }
+        val isAdmin = try { dpm.isAdminActive(adminComp) } catch (_: Throwable) { false }
         val devId = MdmAgentService.getOrCreateUniqueDeviceId(this)
+
+        val scroll = ScrollView(this).apply {
+            setBackgroundColor(Color.parseColor("#090D16"))
+            isFillViewport = true
+        }
 
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(48, 64, 48, 48)
+            setPadding(48, 72, 48, 48)
             setBackgroundColor(Color.parseColor("#090D16"))
         }
 
         val title = TextView(this).apply {
-            text = "🛡️ Org Device Guard (MDM Agent)"
-            textSize = 20f
+            text = "🛡️ Org Device Guard"
+            textSize = 22f
             setTextColor(Color.WHITE)
         }
         val statusView = TextView(this).apply {
-            text = "รหัสประจำเครื่อง (ไม่ซ้ำ): $devId\nสิทธิ์ควบคุม: ${when {
+            text = "รหัสเครื่อง: $devId\nสิทธิ์ควบคุม: ${when {
                 isOwner -> "✅ Device Owner (เต็มรูปแบบ)"
                 isAdmin -> "✅ Device Admin (สั่งล็อกหน้าจอได้)"
-                else -> "⚠️ ยังไม่ได้เปิดสิทธิ์ (กดปุ่มเปิดสิทธิ์ด้านล่าง)"
+                else -> "⚠️ ยังไม่ได้เปิดสิทธิ์ (กดปุ่มสีเทาด้านล่าง)"
             }}"
             textSize = 13f
             setTextColor(Color.parseColor("#94A3B8"))
@@ -63,14 +68,14 @@ class MainActivity : Activity() {
         }
 
         connStatusText = TextView(this).apply {
-            text = "🔄 กำลังเชื่อมต่อเซิร์ฟเวอร์..."
+            text = "🔄 กำลังส่งสัญญาณเข้าเซิร์ฟเวอร์..."
             textSize = 14f
             setTextColor(Color.parseColor("#F59E0B"))
             setPadding(0, 0, 0, 28)
         }
 
         val nameLabel = TextView(this).apply {
-            text = "ชื่อเครื่องในองค์กร (แสดงในหน้าแอดมิน):"
+            text = "1. ชื่อเครื่องในองค์กร (แสดงในหน้าแอดมิน):"
             setTextColor(Color.WHITE)
         }
         val nameInput = EditText(this).apply {
@@ -80,7 +85,7 @@ class MainActivity : Activity() {
         }
 
         val urlLabel = TextView(this).apply {
-            text = "URL เซิร์ฟเวอร์ควบคุม:"
+            text = "2. URL เซิร์ฟเวอร์ควบคุม:"
             setTextColor(Color.WHITE)
             setPadding(0, 20, 0, 0)
         }
@@ -91,7 +96,7 @@ class MainActivity : Activity() {
         }
 
         val saveBtn = Button(this).apply {
-            text = "💾 บันทึก & เชื่อมเข้าสู่ระบบถาวรทันที"
+            text = "💾 บันทึก & ส่งสัญญาณเชื่อมเข้าระบบทันที"
             setOnClickListener {
                 connStatusText.text = "🔄 กำลังส่งสัญญาณไปที่เซิร์ฟเวอร์..."
                 connStatusText.setTextColor(Color.parseColor("#F59E0B"))
@@ -99,25 +104,22 @@ class MainActivity : Activity() {
                     .putString("server_url", urlInput.text.toString().trim().removeSuffix("/"))
                     .putString("device_name", nameInput.text.toString().trim())
                     .apply()
-                val svc = Intent(this@MainActivity, MdmAgentService::class.java).apply {
-                    putExtra("boot_completed", true)
-                }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    startForegroundService(svc)
-                } else {
-                    startService(svc)
-                }
+                safeStartAgent()
             }
         }
 
         val adminBtn = Button(this).apply {
             text = "🔐 เปิดสิทธิ์ Device Admin (เพื่อให้สั่งล็อกเครื่องได้)"
             setOnClickListener {
-                val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
-                    putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComp)
-                    putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "อนุญาตให้องค์กรล็อกหน้าจอและจัดการเครื่องระยะไกล")
+                try {
+                    val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
+                        putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComp)
+                        putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "อนุญาตให้องค์กรล็อกหน้าจอและจัดการเครื่องระยะไกล")
+                    }
+                    startActivity(intent)
+                } catch (e: Throwable) {
+                    Toast.makeText(this@MainActivity, "ไม่สามารถเปิดหน้าตั้งค่าได้: ${e.message}", Toast.LENGTH_LONG).show()
                 }
-                startActivity(intent)
             }
         }
 
@@ -130,30 +132,37 @@ class MainActivity : Activity() {
         layout.addView(urlInput)
         layout.addView(saveBtn)
         layout.addView(adminBtn)
-        setContentView(layout)
+        scroll.addView(layout)
+        setContentView(scroll)
 
-        val svc = Intent(this, MdmAgentService::class.java).apply {
-            putExtra("boot_completed", true)
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(svc)
-        } else {
+        safeStartAgent()
+    }
+
+    private fun safeStartAgent() {
+        try {
+            val svc = Intent(this, MdmAgentService::class.java).apply {
+                putExtra("boot_completed", true)
+            }
             startService(svc)
+        } catch (e: Throwable) {
+            connStatusText.text = "⚠️ เริ่มเซอร์วิส: ${e.localizedMessage}"
         }
     }
 
     override fun onResume() {
         super.onResume()
-        val filter = IntentFilter(MdmAgentService.ACTION_STATUS_UPDATE)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(statusReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            registerReceiver(statusReceiver, filter)
-        }
+        try {
+            val filter = IntentFilter(MdmAgentService.ACTION_STATUS_UPDATE)
+            if (Build.VERSION.SDK_INT >= 33) {
+                registerReceiver(statusReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                registerReceiver(statusReceiver, filter)
+            }
+        } catch (_: Throwable) {}
     }
 
     override fun onPause() {
-        try { unregisterReceiver(statusReceiver) } catch (_: Exception) {}
+        try { unregisterReceiver(statusReceiver) } catch (_: Throwable) {}
         super.onPause()
     }
 }

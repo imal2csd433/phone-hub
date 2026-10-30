@@ -1,8 +1,5 @@
 package com.phonehub.mdm
 
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.app.admin.DevicePolicyManager
@@ -36,12 +33,13 @@ class MdmAgentService : Service() {
             val prefs = ctx.getSharedPreferences("mdm_prefs", Context.MODE_PRIVATE)
             var id = prefs.getString("unique_device_id", null)
             if (id.isNullOrBlank()) {
-                val hwId = Settings.Secure.getString(ctx.contentResolver, Settings.Secure.ANDROID_ID) ?: ""
+                val hwId = try { Settings.Secure.getString(ctx.contentResolver, Settings.Secure.ANDROID_ID) ?: "" } catch (_: Throwable) { "" }
                 val rand = UUID.randomUUID().toString().substring(0, 6).uppercase()
+                val cleanModel = Build.MODEL.replace(Regex("[^a-zA-Z0-9]"), "")
                 id = if (hwId.length >= 6 && hwId != "9774d56d682e549c") {
-                    "AND-${Build.MODEL.replace(" ", "")}-${hwId.takeLast(4).uppercase()}-$rand"
+                    "AND-$cleanModel-${hwId.takeLast(4).uppercase()}-$rand"
                 } else {
-                    "AND-${Build.MODEL.replace(" ", "")}-$rand"
+                    "AND-$cleanModel-$rand"
                 }
                 prefs.edit().putString("unique_device_id", id).apply()
             }
@@ -72,28 +70,18 @@ class MdmAgentService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        startAsForeground()
-        val filter = IntentFilter().apply {
-            addAction(Intent.ACTION_SHUTDOWN)
-            addAction("android.intent.action.QUICKBOOT_POWEROFF")
-        }
-        registerReceiver(shutdownReceiver, filter)
+        try {
+            val filter = IntentFilter().apply {
+                addAction(Intent.ACTION_SHUTDOWN)
+                addAction("android.intent.action.QUICKBOOT_POWEROFF")
+            }
+            if (Build.VERSION.SDK_INT >= 33) {
+                registerReceiver(shutdownReceiver, filter, Context.RECEIVER_EXPORTED)
+            } else {
+                registerReceiver(shutdownReceiver, filter)
+            }
+        } catch (_: Throwable) {}
         scheduler.scheduleAtFixedRate({ checkInWithServer() }, 0, 10, TimeUnit.SECONDS)
-    }
-
-    private fun startAsForeground() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channelId = "org_mdm_guard"
-            val channel = NotificationChannel(channelId, "Org Device Guard", NotificationManager.IMPORTANCE_LOW)
-            val nm = getSystemService(NotificationManager::class.java)
-            nm.createNotificationChannel(channel)
-            val notif = Notification.Builder(this, channelId)
-                .setContentTitle("Org Device Guard ทำงานอยู่")
-                .setContentText("เชื่อมต่อระบบควบคุมองค์กรแบบเรียลไทม์")
-                .setSmallIcon(android.R.drawable.ic_lock_idle_lock)
-                .build()
-            startForeground(1001, notif)
-        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -168,7 +156,7 @@ class MdmAgentService : Service() {
                     putExtra("msg", "❌ เซิร์ฟเวอร์ตอบกลับ HTTP $code")
                 })
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             sendBroadcast(Intent(ACTION_STATUS_UPDATE).apply {
                 setPackage(packageName)
                 putExtra("ok", false)
@@ -182,27 +170,27 @@ class MdmAgentService : Service() {
         val admin = ComponentName(this, MdmAdminReceiver::class.java)
 
         when (command) {
-            "LOCK_NOW" -> try { dpm.lockNow() } catch (_: Exception) {}
+            "LOCK_NOW" -> try { dpm.lockNow() } catch (_: Throwable) {}
             "REBOOT" -> try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && dpm.isDeviceOwnerApp(packageName)) {
                     dpm.reboot(admin)
                 }
-            } catch (_: Exception) {}
+            } catch (_: Throwable) {}
             "SHUTDOWN" -> {
-                try { Runtime.getRuntime().exec(arrayOf("su", "-c", "reboot -p")) } catch (_: Exception) {}
-                try { dpm.lockNow() } catch (_: Exception) {}
+                try { Runtime.getRuntime().exec(arrayOf("su", "-c", "reboot -p")) } catch (_: Throwable) {}
+                try { dpm.lockNow() } catch (_: Throwable) {}
                 try {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && dpm.isDeviceOwnerApp(packageName)) {
                         dpm.setDeviceOwnerLockScreenInfo(admin, "เครื่องนี้ถูกสั่งปิดการใช้งานโดยผู้ดูแลองค์กร")
                     }
-                } catch (_: Exception) {}
+                } catch (_: Throwable) {}
             }
             "UNLOCK" -> {
                 try {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && dpm.isDeviceOwnerApp(packageName)) {
                         dpm.setDeviceOwnerLockScreenInfo(admin, null)
                     }
-                } catch (_: Exception) {}
+                } catch (_: Throwable) {}
             }
             "INSTALL_APK" -> {
                 val dlPath = payload.optString("download_url", "")
@@ -234,11 +222,11 @@ class MdmAgentService : Service() {
             )
             session.commit(pi.intentSender)
             session.close()
-        } catch (_: Exception) {}
+        } catch (_: Throwable) {}
     }
 
     override fun onDestroy() {
-        try { unregisterReceiver(shutdownReceiver) } catch (_: Exception) {}
+        try { unregisterReceiver(shutdownReceiver) } catch (_: Throwable) {}
         super.onDestroy()
     }
 
