@@ -1,5 +1,6 @@
 package com.phonehub.mdm
 
+import android.annotation.SuppressLint
 import android.app.AlarmManager
 import android.app.Notification
 import android.app.NotificationChannel
@@ -20,6 +21,8 @@ import android.os.IBinder
 import android.os.PowerManager
 import android.os.SystemClock
 import android.provider.Settings
+import android.telephony.SubscriptionManager
+import android.telephony.TelephonyManager
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedInputStream
@@ -46,10 +49,12 @@ class MdmAgentService : Service() {
             ctx.getSharedPreferences("mdm_prefs", Context.MODE_PRIVATE)
         }
 
-        fun saveConfig(ctx: Context, serverUrl: String, deviceName: String) {
+        fun saveConfig(ctx: Context, serverUrl: String, deviceName: String, customSn: String, customPhone: String) {
             getSafePrefs(ctx).edit()
                 .putString("server_url", serverUrl)
                 .putString("device_name", deviceName)
+                .putString("custom_sn", customSn)
+                .putString("custom_phone", customPhone)
                 .apply()
         }
 
@@ -59,6 +64,55 @@ class MdmAgentService : Service() {
 
         fun getSavedDeviceName(ctx: Context): String {
             return getSafePrefs(ctx).getString("device_name", "${Build.MANUFACTURER} ${Build.MODEL}") ?: "${Build.MANUFACTURER} ${Build.MODEL}"
+        }
+
+        fun getFullHardwareModel(): String {
+            val brand = Build.MANUFACTURER.replaceFirstChar { it.uppercase() }
+            val model = Build.MODEL
+            return if (model.startsWith(brand, ignoreCase = true)) model else "$brand $model"
+        }
+
+        @SuppressLint("MissingPermission", "HardwareIds")
+        fun detectDeviceSerial(ctx: Context): String {
+            val saved = getSafePrefs(ctx).getString("custom_sn", "")?.trim() ?: ""
+            if (saved.isNotEmpty()) return saved
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    val hwSerial = Build.getSerial()
+                    if (!hwSerial.isNullOrBlank() && !hwSerial.equals("unknown", ignoreCase = true)) {
+                        return hwSerial
+                    }
+                }
+            } catch (_: Throwable) {}
+            try {
+                @Suppress("DEPRECATION")
+                val legacySerial = Build.SERIAL
+                if (!legacySerial.isNullOrBlank() && !legacySerial.equals("unknown", ignoreCase = true)) {
+                    return legacySerial
+                }
+            } catch (_: Throwable) {}
+            val androidId = try { Settings.Secure.getString(ctx.contentResolver, Settings.Secure.ANDROID_ID) ?: "" } catch (_: Throwable) { "" }
+            return if (androidId.isNotEmpty()) androidId.uppercase() else "SN-UNKNOWN"
+        }
+
+        @SuppressLint("MissingPermission", "HardwareIds")
+        fun detectPhoneNumber(ctx: Context): String {
+            val saved = getSafePrefs(ctx).getString("custom_phone", "")?.trim() ?: ""
+            if (saved.isNotEmpty()) return saved
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    val sm = ctx.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as? SubscriptionManager
+                    val num = sm?.getPhoneNumber(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID)
+                    if (!num.isNullOrBlank()) return num
+                }
+            } catch (_: Throwable) {}
+            try {
+                val tm = ctx.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
+                @Suppress("DEPRECATION")
+                val line1 = tm?.line1Number
+                if (!line1.isNullOrBlank()) return line1
+            } catch (_: Throwable) {}
+            return ""
         }
 
         fun getOrCreateUniqueDeviceId(ctx: Context): String {
@@ -181,9 +235,7 @@ class MdmAgentService : Service() {
                     startForeground(1001, notif)
                 }
             }
-        } catch (_: Throwable) {
-            // Falls back gracefully to normal background service if notification permission is restricted
-        }
+        } catch (_: Throwable) {}
     }
 
     private fun acquirePartialWakeLock() {
@@ -210,7 +262,6 @@ class MdmAgentService : Service() {
         return START_STICKY
     }
 
-    // ถ้าผู้ใช้ปัดแอปทิ้งจากหน้า Recent Apps ให้ปลุกตัวเองกลับมาทำงานต่อทันที
     override fun onTaskRemoved(rootIntent: Intent?) {
         scheduleKeepAliveAlarm(this)
         startPersistentService(applicationContext, isBoot = false)
@@ -219,16 +270,22 @@ class MdmAgentService : Service() {
 
     private fun checkInWithServer(ackIds: List<Int> = emptyList(), isShutdown: Boolean = false) {
         try {
-            val deviceId = getOrCreateUniqueDeviceId(this)
+            val ctx = this
+            val deviceId = getOrCreateUniqueDeviceId(ctx)
             val bm = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
             val battery = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
-            val serverUrl = getSavedServerUrl(this)
+            val serverUrl = getSavedServerUrl(ctx)
+            val deviceName = getSavedDeviceName(ctx)
+            val fullModel = getFullHardwareModel()
+            val snValue = detectDeviceSerial(ctx)
+            val phoneValue = detectPhoneNumber(ctx)
 
-            val deviceName = getSavedDeviceName(this)
             val payload = JSONObject().apply {
                 put("device_id", deviceId)
                 put("name", deviceName)
-                put("model", Build.MODEL)
+                put("model", fullModel)
+                put("sn", snValue)
+                put("phone", phoneValue)
                 put("android_version", Build.VERSION.RELEASE)
                 put("battery", battery)
                 put("boot_completed", !bootReported && !isShutdown)

@@ -353,9 +353,23 @@
           <div class="dev-item">
             <div class="dev-top">
               <div>
-                <div class="dev-name">📱 ${d.name} <span style="font-weight:400;font-size:13px;color:var(--muted);">(${d.model})</span></div>
-                <div class="dev-meta">
-                  ID: <code>${d.device_id}</code> • Android ${d.android_version} • แบต ${d.battery}%
+                <div class="dev-name">📱 ${d.name}</div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
+                  <span style="background:#0b1120;border:1px solid var(--border);padding:3px 8px;border-radius:6px;font-size:12px;">
+                    🏷️ รุ่น: <b style="color:#93c5fd;">${d.model || '-'}</b> (Android ${d.android_version || '-'})
+                  </span>
+                  <span style="background:#0b1120;border:1px solid var(--border);padding:3px 8px;border-radius:6px;font-size:12px;">
+                    🔢 SN: <b style="color:#fcd34d;">${d.sn || 'ยังไม่ระบุ'}</b>
+                  </span>
+                  <span style="background:#0b1120;border:1px solid var(--border);padding:3px 8px;border-radius:6px;font-size:12px;">
+                    📞 เบอร์: <b style="color:#6ee7b7;">${d.phone || 'ไม่มีซิม/ไม่ระบุ'}</b>
+                  </span>
+                  <span style="background:#0b1120;border:1px solid var(--border);padding:3px 8px;border-radius:6px;font-size:12px;">
+                    🔋 แบต: <b>${d.battery}%</b>
+                  </span>
+                </div>
+                <div class="dev-meta" style="margin-top:6px;">
+                  ID ระบบ: <code>${d.device_id}</code>
                   ${d.last_boot_at ? `<br/>🟢 เปิดเครื่องล่าสุด: <b>${new Date(d.last_boot_at).toLocaleString('th-TH')}</b>` : ''}
                   ${d.last_seen_at ? ` • สัญญาณล่าสุด: ${new Date(d.last_seen_at).toLocaleTimeString('th-TH')}` : ''}
                 </div>
@@ -468,7 +482,9 @@
         body: JSON.stringify({
           device_id: 'AND-ORG-' + num,
           name: 'เครื่องพนักงาน #' + num,
-          model: 'Samsung Galaxy A55 5G',
+          model: 'Samsung SM-A556E (Galaxy A55 5G)',
+          sn: 'R58W' + num + 'X9K',
+          phone: '081-234-' + num + '9',
           android_version: '14',
           battery: 94,
           boot_completed: true

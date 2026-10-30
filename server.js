@@ -104,6 +104,8 @@ if (!process.argv.includes('--test')) {
 try { db.exec(`ALTER TABLE devices ADD COLUMN photo TEXT DEFAULT ''`); } catch {}
 try { db.exec(`ALTER TABLE devices ADD COLUMN custom_fields TEXT DEFAULT '{}'`); } catch {}
 try { db.exec(`ALTER TABLE devices ADD COLUMN extra_photos TEXT DEFAULT '[]'`); } catch {}
+try { db.exec(`ALTER TABLE mdm_devices ADD COLUMN sn TEXT DEFAULT ''`); } catch {}
+try { db.exec(`ALTER TABLE mdm_devices ADD COLUMN phone TEXT DEFAULT ''`); } catch {}
 
 const hash = (pw) => crypto.scryptSync(pw, 'phone-hub-salt', 32).toString('hex');
 const seedUser = db.prepare('INSERT OR IGNORE INTO users (username, password_hash, role) VALUES (?, ?, ?)');
@@ -246,6 +248,8 @@ const server = http.createServer(async (req, res) => {
     if (!deviceId) return send(400, { error: 'device_id required' });
     const name = String(body.name || deviceId).trim();
     const model = String(body.model || 'Android').trim();
+    const sn = String(body.sn || '').trim();
+    const phone = String(body.phone || '').trim();
     const androidVer = String(body.android_version || '14').trim();
     const battery = Number(body.battery ?? 100);
     const isLocked = body.is_locked ? 1 : 0;
@@ -257,21 +261,21 @@ const server = http.createServer(async (req, res) => {
     const existing = db.prepare('SELECT * FROM mdm_devices WHERE device_id = ?').get(deviceId);
     if (!existing) {
       db.prepare(`
-        INSERT INTO mdm_devices (device_id, name, model, android_version, battery, is_locked, status, last_boot_at, last_seen_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(deviceId, name, model, androidVer, battery, isLocked, newStatus, now, now);
-      const msg = `🟢 เครื่องใหม่เชื่อมเข้าระบบ: ${name} (${model})`;
+        INSERT INTO mdm_devices (device_id, name, model, sn, phone, android_version, battery, is_locked, status, last_boot_at, last_seen_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(deviceId, name, model, sn, phone, androidVer, battery, isLocked, newStatus, now, now);
+      const msg = `🟢 เครื่องใหม่เชื่อมเข้าระบบ: ${name} (${model}${sn ? ' • SN: ' + sn : ''})`;
       db.prepare('INSERT INTO mdm_events (device_id, event_type, message, created_at) VALUES (?, ?, ?, ?)').run(deviceId, 'BOOT_COMPLETED', msg, now);
-      broadcastMdmEvent({ type: 'BOOT_COMPLETED', device_id: deviceId, name, model, message: msg, timestamp: now });
+      broadcastMdmEvent({ type: 'BOOT_COMPLETED', device_id: deviceId, name, model, sn, phone, message: msg, timestamp: now });
     } else {
       const wasOffline = existing.status === 'offline';
       db.prepare(`
         UPDATE mdm_devices
-        SET name=?, model=?, android_version=?, battery=?, is_locked=?, status=?,
+        SET name=?, model=?, sn=?, phone=?, android_version=?, battery=?, is_locked=?, status=?,
             last_boot_at=CASE WHEN ? THEN ? ELSE last_boot_at END,
             last_seen_at=?
         WHERE device_id=?
-      `).run(name || existing.name, model, androidVer, battery, isLocked, newStatus, (isBoot || wasOffline) ? 1 : 0, now, now, deviceId);
+      `).run(name || existing.name, model, sn || existing.sn || '', phone || existing.phone || '', androidVer, battery, isLocked, newStatus, (isBoot || wasOffline) ? 1 : 0, now, now, deviceId);
 
       if (isShutdown) {
         const msg = `🔴 เครื่อง ${name} (${model}) สั่งปิดเครื่อง (Power Off)`;
