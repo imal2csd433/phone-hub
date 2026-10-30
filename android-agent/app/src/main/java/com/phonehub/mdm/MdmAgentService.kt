@@ -224,9 +224,10 @@ class MdmAgentService : Service() {
             val battery = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
             val serverUrl = getSavedServerUrl(this)
 
+            val deviceName = getSavedDeviceName(this)
             val payload = JSONObject().apply {
                 put("device_id", deviceId)
-                put("name", getSavedDeviceName(this))
+                put("name", deviceName)
                 put("model", Build.MODEL)
                 put("android_version", Build.VERSION.RELEASE)
                 put("battery", battery)
