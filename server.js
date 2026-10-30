@@ -191,6 +191,19 @@ const server = http.createServer(async (req, res) => {
     return res.end(fs.readFileSync(path.join(__dirname, 'mdm.html')));
   }
 
+  // Direct download for compiled Organization Android Agent APK
+  if (req.method === 'GET' && url.pathname === '/org-device-guard.apk') {
+    const apkPath = path.join(__dirname, 'org-device-guard.apk');
+    if (!fs.existsSync(apkPath)) return send(404, { error: 'APK not found' });
+    const stat = fs.statSync(apkPath);
+    res.writeHead(200, {
+      'Content-Type': 'application/vnd.android.package-archive',
+      'Content-Disposition': 'attachment; filename="org-device-guard.apk"',
+      'Content-Length': stat.size
+    });
+    return fs.createReadStream(apkPath).pipe(res);
+  }
+
   // Public APK binary download for Android Agent silent installer
   if (req.method === 'GET' && url.pathname.startsWith('/api/mdm/apk-file/')) {
     const id = Number(url.pathname.split('/').pop());
