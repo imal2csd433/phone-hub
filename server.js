@@ -82,6 +82,25 @@ function broadcastMdmEvent(evt) {
   }
 }
 
+// Auto-detect powered-off / disconnected devices when heartbeat stops (> 30s)
+if (!process.argv.includes('--test')) {
+  setInterval(() => {
+    try {
+      const stale = db.prepare(`
+        SELECT device_id, name, model FROM mdm_devices
+        WHERE status = 'online' AND (julianday('now') - julianday(last_seen_at)) * 86400 > 30
+      `).all();
+      const now = new Date().toISOString();
+      for (const d of stale) {
+        db.prepare(`UPDATE mdm_devices SET status = 'offline' WHERE device_id = ?`).run(d.device_id);
+        const msg = `🔴 เครื่อง ${d.name} (${d.model}) ปิดเครื่องหรือขาดการเชื่อมต่อ`;
+        db.prepare(`INSERT INTO mdm_events (device_id, event_type, message, created_at) VALUES (?, 'DEVICE_OFFLINE', ?, ?)`).run(d.device_id, msg, now);
+        broadcastMdmEvent({ type: 'DEVICE_SHUTDOWN', device_id: d.device_id, name: d.name, model: d.model, message: msg, timestamp: now });
+      }
+    } catch {}
+  }, 8000);
+}
+
 try { db.exec(`ALTER TABLE devices ADD COLUMN photo TEXT DEFAULT ''`); } catch {}
 try { db.exec(`ALTER TABLE devices ADD COLUMN custom_fields TEXT DEFAULT '{}'`); } catch {}
 try { db.exec(`ALTER TABLE devices ADD COLUMN extra_photos TEXT DEFAULT '[]'`); } catch {}
@@ -231,30 +250,40 @@ const server = http.createServer(async (req, res) => {
     const battery = Number(body.battery ?? 100);
     const isLocked = body.is_locked ? 1 : 0;
     const isBoot = Boolean(body.boot_completed);
+    const isShutdown = Boolean(body.shutdown_initiated);
+    const newStatus = isShutdown ? 'offline' : 'online';
     const now = new Date().toISOString();
 
     const existing = db.prepare('SELECT * FROM mdm_devices WHERE device_id = ?').get(deviceId);
     if (!existing) {
       db.prepare(`
         INSERT INTO mdm_devices (device_id, name, model, android_version, battery, is_locked, status, last_boot_at, last_seen_at)
-        VALUES (?, ?, ?, ?, ?, ?, 'online', ?, ?)
-      `).run(deviceId, name, model, androidVer, battery, isLocked, isBoot ? now : '', now);
-    } else {
-      db.prepare(`
-        UPDATE mdm_devices
-        SET name=?, model=?, android_version=?, battery=?, is_locked=?, status='online',
-            last_boot_at=CASE WHEN ? THEN ? ELSE last_boot_at END,
-            last_seen_at=?
-        WHERE device_id=?
-      `).run(name || existing.name, model, androidVer, battery, isLocked, isBoot ? 1 : 0, now, now, deviceId);
-    }
-
-    if (isBoot) {
-      const msg = `เครื่อง ${name} (${model}) เปิดเครื่องเข้าสู่ระบบ`;
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(deviceId, name, model, androidVer, battery, isLocked, newStatus, now, now);
+      const msg = `🟢 เครื่องใหม่เชื่อมเข้าระบบ: ${name} (${model})`;
       db.prepare('INSERT INTO mdm_events (device_id, event_type, message, created_at) VALUES (?, ?, ?, ?)').run(deviceId, 'BOOT_COMPLETED', msg, now);
       broadcastMdmEvent({ type: 'BOOT_COMPLETED', device_id: deviceId, name, model, message: msg, timestamp: now });
     } else {
-      broadcastMdmEvent({ type: 'HEARTBEAT', device_id: deviceId, battery, is_locked: isLocked, timestamp: now });
+      const wasOffline = existing.status === 'offline';
+      db.prepare(`
+        UPDATE mdm_devices
+        SET name=?, model=?, android_version=?, battery=?, is_locked=?, status=?,
+            last_boot_at=CASE WHEN ? THEN ? ELSE last_boot_at END,
+            last_seen_at=?
+        WHERE device_id=?
+      `).run(name || existing.name, model, androidVer, battery, isLocked, newStatus, (isBoot || wasOffline) ? 1 : 0, now, now, deviceId);
+
+      if (isShutdown) {
+        const msg = `🔴 เครื่อง ${name} (${model}) สั่งปิดเครื่อง (Power Off)`;
+        db.prepare('INSERT INTO mdm_events (device_id, event_type, message, created_at) VALUES (?, ?, ?, ?)').run(deviceId, 'DEVICE_SHUTDOWN', msg, now);
+        broadcastMdmEvent({ type: 'DEVICE_SHUTDOWN', device_id: deviceId, name, model, message: msg, timestamp: now });
+      } else if (isBoot || wasOffline) {
+        const msg = `🟢 เครื่อง ${name} (${model}) เปิดเครื่องเข้าสู่ระบบ`;
+        db.prepare('INSERT INTO mdm_events (device_id, event_type, message, created_at) VALUES (?, ?, ?, ?)').run(deviceId, 'BOOT_COMPLETED', msg, now);
+        broadcastMdmEvent({ type: 'BOOT_COMPLETED', device_id: deviceId, name, model, message: msg, timestamp: now });
+      } else {
+        broadcastMdmEvent({ type: 'HEARTBEAT', device_id: deviceId, battery, is_locked: isLocked, status: 'online', timestamp: now });
+      }
     }
 
     // Acknowledge executed commands if reported

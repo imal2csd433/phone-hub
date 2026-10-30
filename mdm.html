@@ -295,13 +295,13 @@
       sse.onmessage = (ev) => {
         try {
           const msg = JSON.parse(ev.data);
-          if (msg.type === 'BOOT_COMPLETED') {
+          if (msg.type === 'BOOT_COMPLETED' || msg.type === 'DEVICE_SHUTDOWN') {
             playAlertBeep();
             const banner = document.getElementById('bootBanner');
             document.getElementById('bootBannerText').textContent = `${msg.message} เมื่อ ${new Date(msg.timestamp).toLocaleTimeString('th-TH')}`;
             banner.classList.remove('hidden');
             if ('Notification' in window && Notification.permission === 'granted') {
-              new Notification('🚨 โทรศัพท์ในองค์กรเปิดเครื่อง!', { body: msg.message });
+              new Notification(msg.type === 'BOOT_COMPLETED' ? '🟢 เครื่องเปิดใช้งาน!' : '🔴 เครื่องปิดใช้งาน!', { body: msg.message });
             }
           }
           loadOverview();
@@ -339,8 +339,8 @@
 
       list.innerHTML = devices.map(d => {
         const isOff = d.status === 'offline';
-        const pillClass = d.is_locked || isOff ? 'st-locked' : 'st-online';
-        const pillText = isOff ? 'ดับเครื่อง / ปิดใช้งาน' : (d.is_locked ? 'ถูกล็อกหน้าจอ' : 'เปิดใช้งานอยู่ (ONLINE)');
+        const pillClass = isOff ? 'st-locked' : (d.is_locked ? 'st-locked' : 'st-online');
+        const pillText = isOff ? '🔴 ปิดเครื่อง / ออฟไลน์' : (d.is_locked ? '🔒 ถูกล็อกหน้าจอ' : '🟢 เปิดเครื่องใช้งานอยู่ (ONLINE)');
         return `
           <div class="dev-item">
             <div class="dev-top">
@@ -349,9 +349,13 @@
                 <div class="dev-meta">
                   ID: <code>${d.device_id}</code> • Android ${d.android_version} • แบต ${d.battery}%
                   ${d.last_boot_at ? `<br/>🟢 เปิดเครื่องล่าสุด: <b>${new Date(d.last_boot_at).toLocaleString('th-TH')}</b>` : ''}
+                  ${d.last_seen_at ? ` • สัญญาณล่าสุด: ${new Date(d.last_seen_at).toLocaleTimeString('th-TH')}` : ''}
                 </div>
               </div>
-              <span class="status-pill ${pillClass}">${pillText}</span>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span class="status-pill ${pillClass}">${pillText}</span>
+                <button class="btn-ghost" style="padding:5px 9px;font-size:11px;color:#fca5a5;border-color:rgba(239,68,68,0.4);" onclick="deleteDevice('${d.device_id}', '${d.name.replace(/'/g, '')}')" title="ลบเครื่องออกจากระบบ">🗑️ ลบ</button>
+              </div>
             </div>
             <div class="dev-actions">
               <button class="btn-red" onclick="sendCmd('${d.device_id}', 'SHUTDOWN')">⏻ สั่งปิดเครื่องทันที</button>
@@ -362,6 +366,15 @@
           </div>
         `;
       }).join('');
+    }
+
+    async function deleteDevice(deviceId, name) {
+      if (!confirm(`ยืนยันการลบเครื่อง "${name}" (${deviceId}) ออกจากระบบ?`)) return;
+      const res = await fetch('/api/mdm/devices/' + encodeURIComponent(deviceId), {
+        method: 'DELETE',
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      if (res.ok) loadOverview();
     }
 
     function renderEvents(events) {

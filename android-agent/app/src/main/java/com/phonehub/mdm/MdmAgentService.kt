@@ -1,11 +1,16 @@
 package com.phonehub.mdm
 
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.app.admin.DevicePolicyManager
+import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageInstaller
 import android.os.BatteryManager
 import android.os.Build
@@ -16,14 +21,43 @@ import org.json.JSONObject
 import java.io.BufferedInputStream
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.UUID
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 class MdmAgentService : Service() {
 
     companion object {
-        const val DEFAULT_SERVER_URL = "https://6c77e3dcaae6ad.lhr.life"
+        const val DEFAULT_SERVER_URL = "https://mechanics-pointer-omaha-broadcasting.trycloudflare.com"
         const val AGENT_KEY = "org-secret-agent-key-2026"
+        const val ACTION_STATUS_UPDATE = "com.phonehub.mdm.STATUS_UPDATE"
+
+        fun getOrCreateUniqueDeviceId(ctx: Context): String {
+            val prefs = ctx.getSharedPreferences("mdm_prefs", Context.MODE_PRIVATE)
+            var id = prefs.getString("unique_device_id", null)
+            if (id.isNullOrBlank()) {
+                val hwId = Settings.Secure.getString(ctx.contentResolver, Settings.Secure.ANDROID_ID) ?: ""
+                val rand = UUID.randomUUID().toString().substring(0, 6).uppercase()
+                id = if (hwId.length >= 6 && hwId != "9774d56d682e549c") {
+                    "AND-${Build.MODEL.replace(" ", "")}-${hwId.takeLast(4).uppercase()}-$rand"
+                } else {
+                    "AND-${Build.MODEL.replace(" ", "")}-$rand"
+                }
+                prefs.edit().putString("unique_device_id", id).apply()
+            }
+            return id
+        }
+    }
+
+    private val scheduler = Executors.newSingleThreadScheduledExecutor()
+    private var bootReported = false
+
+    private val shutdownReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == Intent.ACTION_SHUTDOWN || intent.action == "android.intent.action.QUICKBOOT_POWEROFF") {
+                scheduler.execute { checkInWithServer(isShutdown = true) }
+            }
+        }
     }
 
     private fun getServerUrl(): String {
@@ -36,15 +70,37 @@ class MdmAgentService : Service() {
         return prefs.getString("device_name", "${Build.MANUFACTURER} ${Build.MODEL}") ?: "${Build.MANUFACTURER} ${Build.MODEL}"
     }
 
-    private val scheduler = Executors.newSingleThreadScheduledExecutor()
-    private var bootReported = false
-
     override fun onCreate() {
         super.onCreate()
+        startAsForeground()
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_SHUTDOWN)
+            addAction("android.intent.action.QUICKBOOT_POWEROFF")
+        }
+        registerReceiver(shutdownReceiver, filter)
         scheduler.scheduleAtFixedRate({ checkInWithServer() }, 0, 10, TimeUnit.SECONDS)
     }
 
+    private fun startAsForeground() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channelId = "org_mdm_guard"
+            val channel = NotificationChannel(channelId, "Org Device Guard", NotificationManager.IMPORTANCE_LOW)
+            val nm = getSystemService(NotificationManager::class.java)
+            nm.createNotificationChannel(channel)
+            val notif = Notification.Builder(this, channelId)
+                .setContentTitle("Org Device Guard ทำงานอยู่")
+                .setContentText("เชื่อมต่อระบบควบคุมองค์กรแบบเรียลไทม์")
+                .setSmallIcon(android.R.drawable.ic_lock_idle_lock)
+                .build()
+            startForeground(1001, notif)
+        }
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.getBooleanExtra("shutdown_initiated", false) == true) {
+            scheduler.execute { checkInWithServer(isShutdown = true) }
+            return START_STICKY
+        }
         if (intent?.getBooleanExtra("boot_completed", false) == true) {
             bootReported = false
             scheduler.execute { checkInWithServer() }
@@ -52,20 +108,21 @@ class MdmAgentService : Service() {
         return START_STICKY
     }
 
-    private fun checkInWithServer(ackIds: List<Int> = emptyList()) {
+    private fun checkInWithServer(ackIds: List<Int> = emptyList(), isShutdown: Boolean = false) {
         try {
-            val deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID) ?: "ANDROID-DEV"
+            val deviceId = getOrCreateUniqueDeviceId(this)
             val bm = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
             val battery = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
-
             val serverUrl = getServerUrl()
+
             val payload = JSONObject().apply {
                 put("device_id", deviceId)
                 put("name", getDeviceName())
                 put("model", Build.MODEL)
                 put("android_version", Build.VERSION.RELEASE)
                 put("battery", battery)
-                put("boot_completed", !bootReported)
+                put("boot_completed", !bootReported && !isShutdown)
+                put("shutdown_initiated", isShutdown)
                 put("ack_commands", JSONArray(ackIds))
             }
 
@@ -79,8 +136,14 @@ class MdmAgentService : Service() {
             }
             conn.outputStream.use { it.write(payload.toString().toByteArray()) }
 
-            if (conn.responseCode == 200) {
+            val code = conn.responseCode
+            if (code == 200) {
                 bootReported = true
+                sendBroadcast(Intent(ACTION_STATUS_UPDATE).apply {
+                    setPackage(packageName)
+                    putExtra("ok", true)
+                    putExtra("msg", "✅ เชื่อมต่อสำเร็จ (${java.text.SimpleDateFormat("HH:mm:ss").format(java.util.Date())})")
+                })
                 val respText = conn.inputStream.bufferedReader().readText()
                 val json = JSONObject(respText)
                 val cmds = json.optJSONArray("commands") ?: JSONArray()
@@ -98,8 +161,20 @@ class MdmAgentService : Service() {
                 if (executed.isNotEmpty()) {
                     checkInWithServer(executed)
                 }
+            } else {
+                sendBroadcast(Intent(ACTION_STATUS_UPDATE).apply {
+                    setPackage(packageName)
+                    putExtra("ok", false)
+                    putExtra("msg", "❌ เซิร์ฟเวอร์ตอบกลับ HTTP $code")
+                })
             }
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            sendBroadcast(Intent(ACTION_STATUS_UPDATE).apply {
+                setPackage(packageName)
+                putExtra("ok", false)
+                putExtra("msg", "❌ เชื่อมต่อไม่สำเร็จ: ${e.localizedMessage ?: "ตรวจสอบ URL"}")
+            })
+        }
     }
 
     private fun executeDeviceCommand(command: String, payload: JSONObject) {
@@ -107,23 +182,27 @@ class MdmAgentService : Service() {
         val admin = ComponentName(this, MdmAdminReceiver::class.java)
 
         when (command) {
-            "LOCK_NOW" -> dpm.lockNow()
-            "REBOOT" -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && dpm.isDeviceOwnerApp(packageName)) {
-                dpm.reboot(admin)
-            }
-            "SHUTDOWN" -> {
-                // 1. หากเครื่อง Root หรือเป็น System App จะดับเครื่องสนิททันที
-                try { Runtime.getRuntime().exec(arrayOf("su", "-c", "reboot -p")) } catch (_: Exception) {}
-                // 2. หากเป็นเครื่องมาตรฐาน (Device Owner) จะล็อกหน้าจอทันทีและบล็อกการใช้งานทั้งหมด
-                dpm.lockNow()
+            "LOCK_NOW" -> try { dpm.lockNow() } catch (_: Exception) {}
+            "REBOOT" -> try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && dpm.isDeviceOwnerApp(packageName)) {
-                    dpm.setDeviceOwnerLockScreenInfo(admin, "เครื่องนี้ถูกสั่งปิดการใช้งานโดยผู้ดูแลองค์กร")
+                    dpm.reboot(admin)
                 }
+            } catch (_: Exception) {}
+            "SHUTDOWN" -> {
+                try { Runtime.getRuntime().exec(arrayOf("su", "-c", "reboot -p")) } catch (_: Exception) {}
+                try { dpm.lockNow() } catch (_: Exception) {}
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && dpm.isDeviceOwnerApp(packageName)) {
+                        dpm.setDeviceOwnerLockScreenInfo(admin, "เครื่องนี้ถูกสั่งปิดการใช้งานโดยผู้ดูแลองค์กร")
+                    }
+                } catch (_: Exception) {}
             }
             "UNLOCK" -> {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && dpm.isDeviceOwnerApp(packageName)) {
-                    dpm.setDeviceOwnerLockScreenInfo(admin, null)
-                }
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && dpm.isDeviceOwnerApp(packageName)) {
+                        dpm.setDeviceOwnerLockScreenInfo(admin, null)
+                    }
+                } catch (_: Exception) {}
             }
             "INSTALL_APK" -> {
                 val dlPath = payload.optString("download_url", "")
@@ -134,27 +213,33 @@ class MdmAgentService : Service() {
         }
     }
 
-    // ติดตั้งไฟล์ APK ระยะไกลแบบเงียบ (Silent Install โดยไม่ต้องมีคนกดยืนยัน)
     private fun silentInstallApk(apkUrl: String) {
-        val installer = packageManager.packageInstaller
-        val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
-        val sessionId = installer.createSession(params)
-        val session = installer.openSession(sessionId)
+        try {
+            val installer = packageManager.packageInstaller
+            val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
+            val sessionId = installer.createSession(params)
+            val session = installer.openSession(sessionId)
 
-        URL(apkUrl).openStream().use { input ->
-            session.openWrite("remote_push.apk", 0, -1).use { output ->
-                BufferedInputStream(input).copyTo(output)
-                session.fsync(output)
+            URL(apkUrl).openStream().use { input ->
+                session.openWrite("remote_push.apk", 0, -1).use { output ->
+                    BufferedInputStream(input).copyTo(output)
+                    session.fsync(output)
+                }
             }
-        }
 
-        val intent = Intent(this, ApkInstallReceiver::class.java)
-        val pi = PendingIntent.getBroadcast(
-            this, sessionId, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        session.commit(pi.intentSender)
-        session.close()
+            val intent = Intent(this, ApkInstallReceiver::class.java)
+            val pi = PendingIntent.getBroadcast(
+                this, sessionId, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            session.commit(pi.intentSender)
+            session.close()
+        } catch (_: Exception) {}
+    }
+
+    override fun onDestroy() {
+        try { unregisterReceiver(shutdownReceiver) } catch (_: Exception) {}
+        super.onDestroy()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
