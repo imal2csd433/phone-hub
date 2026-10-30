@@ -32,7 +32,55 @@ db.exec(`
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS mdm_devices (
+    device_id TEXT PRIMARY KEY,
+    name TEXT DEFAULT '',
+    model TEXT DEFAULT '',
+    android_version TEXT DEFAULT '',
+    battery INTEGER DEFAULT 100,
+    is_locked INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'online',
+    last_boot_at TEXT DEFAULT '',
+    last_seen_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS mdm_commands (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    device_id TEXT NOT NULL,
+    command TEXT NOT NULL,
+    payload TEXT DEFAULT '{}',
+    status TEXT DEFAULT 'pending',
+    created_by TEXT DEFAULT '',
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    executed_at TEXT DEFAULT ''
+  );
+  CREATE TABLE IF NOT EXISTS mdm_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    device_id TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    message TEXT NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS mdm_apks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    filename TEXT NOT NULL,
+    package_name TEXT DEFAULT '',
+    size_bytes INTEGER DEFAULT 0,
+    data_base64 TEXT NOT NULL,
+    uploaded_by TEXT DEFAULT '',
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
 `);
+
+// ponytail: SSE client set in memory; single process only
+const mdmClients = new Set();
+const MDM_AGENT_KEY = process.env.MDM_AGENT_KEY || 'org-secret-agent-key-2026';
+
+function broadcastMdmEvent(evt) {
+  const payload = `data: ${JSON.stringify(evt)}\n\n`;
+  for (const res of mdmClients) {
+    try { res.write(payload); } catch { mdmClients.delete(res); }
+  }
+}
 
 try { db.exec(`ALTER TABLE devices ADD COLUMN photo TEXT DEFAULT ''`); } catch {}
 try { db.exec(`ALTER TABLE devices ADD COLUMN custom_fields TEXT DEFAULT '{}'`); } catch {}
@@ -78,6 +126,12 @@ if (process.argv.includes('--test')) {
   assert.equal(validatePayload(emptyData), null);
   assert.ok(emptyData.sn.startsWith('SN-'));
   assert.equal(emptyData.model, '-');
+  // Verify MDM tables & boot alert + remote command flow
+  db.prepare(`INSERT OR REPLACE INTO mdm_devices (device_id, name, model, status) VALUES ('TEST-AND-1', 'Test Phone', 'Galaxy A55', 'online')`).run();
+  const cmdInfo = db.prepare(`INSERT INTO mdm_commands (device_id, command, status) VALUES ('TEST-AND-1', 'SHUTDOWN', 'pending')`).run();
+  assert.ok(cmdInfo.lastInsertRowid > 0);
+  db.prepare(`DELETE FROM mdm_commands WHERE id = ?`).run(cmdInfo.lastInsertRowid);
+  db.prepare(`DELETE FROM mdm_devices WHERE device_id = 'TEST-AND-1'`).run();
   console.log('Self-check passed');
   process.exit(0);
 }
@@ -125,6 +179,101 @@ const server = http.createServer(async (req, res) => {
     });
     if (req.method === 'HEAD') return res.end();
     return res.end(fs.readFileSync(path.join(__dirname, 'presentation.html')));
+  }
+
+  // Standalone MDM Controller App (2-person exclusive: owner & admin)
+  if ((req.method === 'GET' || req.method === 'HEAD') && (url.pathname === '/mdm' || url.pathname === '/mdm.html')) {
+    res.writeHead(200, {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0'
+    });
+    if (req.method === 'HEAD') return res.end();
+    return res.end(fs.readFileSync(path.join(__dirname, 'mdm.html')));
+  }
+
+  // Public APK binary download for Android Agent silent installer
+  if (req.method === 'GET' && url.pathname.startsWith('/api/mdm/apk-file/')) {
+    const id = Number(url.pathname.split('/').pop());
+    const apk = db.prepare('SELECT filename, data_base64 FROM mdm_apks WHERE id = ?').get(id);
+    if (!apk) return send(404, { error: 'APK not found' });
+    const buf = Buffer.from(apk.data_base64, 'base64');
+    res.writeHead(200, {
+      'Content-Type': 'application/vnd.android.package-archive',
+      'Content-Disposition': `attachment; filename="${apk.filename.replace(/[^a-zA-Z0-9._-]/g, '_')}"`,
+      'Content-Length': buf.length
+    });
+    return res.end(buf);
+  }
+
+  // Android Agent Heartbeat / Boot Alert endpoint (authenticated via x-agent-key or body key)
+  if (req.method === 'POST' && url.pathname === '/api/mdm/agent/checkin') {
+    const body = await readJson(req);
+    const key = req.headers['x-agent-key'] || body.agent_key || '';
+    if (key !== MDM_AGENT_KEY) return send(401, { error: 'Invalid agent key' });
+    const deviceId = String(body.device_id || '').trim();
+    if (!deviceId) return send(400, { error: 'device_id required' });
+    const name = String(body.name || deviceId).trim();
+    const model = String(body.model || 'Android').trim();
+    const androidVer = String(body.android_version || '14').trim();
+    const battery = Number(body.battery ?? 100);
+    const isLocked = body.is_locked ? 1 : 0;
+    const isBoot = Boolean(body.boot_completed);
+    const now = new Date().toISOString();
+
+    const existing = db.prepare('SELECT * FROM mdm_devices WHERE device_id = ?').get(deviceId);
+    if (!existing) {
+      db.prepare(`
+        INSERT INTO mdm_devices (device_id, name, model, android_version, battery, is_locked, status, last_boot_at, last_seen_at)
+        VALUES (?, ?, ?, ?, ?, ?, 'online', ?, ?)
+      `).run(deviceId, name, model, androidVer, battery, isLocked, isBoot ? now : '', now);
+    } else {
+      db.prepare(`
+        UPDATE mdm_devices
+        SET name=?, model=?, android_version=?, battery=?, is_locked=?, status='online',
+            last_boot_at=CASE WHEN ? THEN ? ELSE last_boot_at END,
+            last_seen_at=?
+        WHERE device_id=?
+      `).run(name || existing.name, model, androidVer, battery, isLocked, isBoot ? 1 : 0, now, now, deviceId);
+    }
+
+    if (isBoot) {
+      const msg = `เครื่อง ${name} (${model}) เปิดเครื่องเข้าสู่ระบบ`;
+      db.prepare('INSERT INTO mdm_events (device_id, event_type, message, created_at) VALUES (?, ?, ?, ?)').run(deviceId, 'BOOT_COMPLETED', msg, now);
+      broadcastMdmEvent({ type: 'BOOT_COMPLETED', device_id: deviceId, name, model, message: msg, timestamp: now });
+    } else {
+      broadcastMdmEvent({ type: 'HEARTBEAT', device_id: deviceId, battery, is_locked: isLocked, timestamp: now });
+    }
+
+    // Acknowledge executed commands if reported
+    if (Array.isArray(body.ack_commands) && body.ack_commands.length > 0) {
+      const ackStmt = db.prepare(`UPDATE mdm_commands SET status = 'executed', executed_at = ? WHERE id = ? AND device_id = ?`);
+      for (const cmdId of body.ack_commands) {
+        ackStmt.run(now, Number(cmdId), deviceId);
+      }
+      broadcastMdmEvent({ type: 'COMMAND_ACK', device_id: deviceId, ack_commands: body.ack_commands, timestamp: now });
+    }
+
+    const pending = db.prepare(`SELECT id, command, payload, created_at FROM mdm_commands WHERE device_id = ? AND status = 'pending' ORDER BY id ASC`).all(deviceId);
+    return send(200, {
+      ok: true,
+      commands: pending.map((c) => ({ id: c.id, command: c.command, payload: JSON.parse(c.payload || '{}') }))
+    });
+  }
+
+  // SSE stream for real-time boot notifications in 2-person MDM controller app
+  if (req.method === 'GET' && url.pathname === '/api/mdm/stream') {
+    const token = url.searchParams.get('token') || (req.headers.authorization || '').replace('Bearer ', '');
+    const sUser = sessions.get(token);
+    if (!sUser || (sUser.role !== 'owner' && sUser.role !== 'admin')) return send(403, { error: 'Forbidden' });
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive'
+    });
+    res.write(`data: ${JSON.stringify({ type: 'CONNECTED', user: sUser.username })}\n\n`);
+    mdmClients.add(res);
+    req.on('close', () => mdmClients.delete(res));
+    return;
   }
 
   if (req.method === 'POST' && url.pathname === '/api/login') {
@@ -242,6 +391,82 @@ const server = http.createServer(async (req, res) => {
     if (!id) return send(400, { error: 'Invalid device ID' });
     db.prepare('DELETE FROM devices WHERE id = ?').run(id);
     return send(200, { ok: true });
+  }
+
+  // --- MDM Controller APIs (Strictly Owner & Admin only) ---
+  if (url.pathname.startsWith('/api/mdm/')) {
+    if (!canEdit) return send(403, { error: 'Forbidden: Owner and Admin only' });
+
+    if (req.method === 'GET' && url.pathname === '/api/mdm/overview') {
+      const devices = db.prepare('SELECT * FROM mdm_devices ORDER BY last_seen_at DESC').all();
+      const events = db.prepare('SELECT * FROM mdm_events ORDER BY id DESC LIMIT 50').all();
+      const commands = db.prepare('SELECT * FROM mdm_commands ORDER BY id DESC LIMIT 50').all();
+      const apks = db.prepare('SELECT id, filename, package_name, size_bytes, uploaded_by, created_at FROM mdm_apks ORDER BY id DESC').all();
+      return send(200, { devices, events, commands, apks, agent_key: MDM_AGENT_KEY });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/mdm/command') {
+      const { device_id, command, payload } = await readJson(req);
+      const allowedCmds = ['LOCK_NOW', 'UNLOCK', 'REBOOT', 'SHUTDOWN', 'INSTALL_APK', 'KIOSK_LOCK'];
+      if (!device_id || !allowedCmds.includes(command)) {
+        return send(400, { error: 'Invalid device_id or command' });
+      }
+      const now = new Date().toISOString();
+      const info = db.prepare(`
+        INSERT INTO mdm_commands (device_id, command, payload, status, created_by, created_at)
+        VALUES (?, ?, ?, 'pending', ?, ?)
+      `).run(String(device_id), command, JSON.stringify(payload || {}), user.username, now);
+
+      if (command === 'LOCK_NOW' || command === 'KIOSK_LOCK') {
+        db.prepare('UPDATE mdm_devices SET is_locked = 1 WHERE device_id = ?').run(String(device_id));
+      } else if (command === 'UNLOCK') {
+        db.prepare('UPDATE mdm_devices SET is_locked = 0 WHERE device_id = ?').run(String(device_id));
+      } else if (command === 'SHUTDOWN') {
+        db.prepare(`UPDATE mdm_devices SET status = 'offline', is_locked = 1 WHERE device_id = ?`).run(String(device_id));
+      }
+
+      const evtMsg = `[${user.username}] สั่ง ${command} ไปยัง ${device_id}`;
+      db.prepare('INSERT INTO mdm_events (device_id, event_type, message, created_at) VALUES (?, ?, ?, ?)').run(String(device_id), 'COMMAND_' + command, evtMsg, now);
+      broadcastMdmEvent({ type: 'COMMAND_QUEUED', id: info.lastInsertRowid, device_id, command, by: user.username, timestamp: now });
+      return send(201, { ok: true, command_id: info.lastInsertRowid });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/mdm/apks') {
+      const { filename, package_name, data_base64, target_device_id } = await readJson(req);
+      if (!filename || !data_base64) return send(400, { error: 'filename and data_base64 required' });
+      const cleanBase64 = String(data_base64).replace(/^data:.*?;base64,/, '');
+      const sizeBytes = Buffer.byteLength(cleanBase64, 'base64');
+      const now = new Date().toISOString();
+      const info = db.prepare(`
+        INSERT INTO mdm_apks (filename, package_name, size_bytes, data_base64, uploaded_by, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run(String(filename), String(package_name || ''), sizeBytes, cleanBase64, user.username, now);
+
+      const apkId = info.lastInsertRowid;
+      if (target_device_id) {
+        const dlUrl = `/api/mdm/apk-file/${apkId}`;
+        db.prepare(`
+          INSERT INTO mdm_commands (device_id, command, payload, status, created_by, created_at)
+          VALUES (?, 'INSTALL_APK', ?, 'pending', ?, ?)
+        `).run(String(target_device_id), JSON.stringify({ apk_id: apkId, filename, download_url: dlUrl }), user.username, now);
+        const msg = `[${user.username}] ส่งไฟล์ ${filename} ติดตั้งระยะไกลไปยัง ${target_device_id}`;
+        db.prepare('INSERT INTO mdm_events (device_id, event_type, message, created_at) VALUES (?, ?, ?, ?)').run(String(target_device_id), 'REMOTE_APK_PUSH', msg, now);
+        broadcastMdmEvent({ type: 'REMOTE_APK_PUSH', device_id: target_device_id, filename, apk_id: apkId, timestamp: now });
+      }
+      return send(201, { ok: true, apk_id: apkId, size_bytes: sizeBytes });
+    }
+
+    if (req.method === 'DELETE' && url.pathname.startsWith('/api/mdm/apks/')) {
+      const id = Number(url.pathname.split('/').pop());
+      db.prepare('DELETE FROM mdm_apks WHERE id = ?').run(id);
+      return send(200, { ok: true });
+    }
+
+    if (req.method === 'DELETE' && url.pathname.startsWith('/api/mdm/devices/')) {
+      const devId = decodeURIComponent(url.pathname.split('/').pop());
+      db.prepare('DELETE FROM mdm_devices WHERE device_id = ?').run(devId);
+      return send(200, { ok: true });
+    }
   }
 
   send(404, { error: 'Not found' });
