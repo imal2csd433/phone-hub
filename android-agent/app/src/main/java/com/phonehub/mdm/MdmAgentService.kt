@@ -22,9 +22,18 @@ import java.util.concurrent.TimeUnit
 class MdmAgentService : Service() {
 
     companion object {
-        // เปลี่ยน URL นี้เป็น IP หรือโดเมนเซิร์ฟเวอร์ของคุณ
-        const val SERVER_URL = "http://10.0.2.2:3000"
+        const val DEFAULT_SERVER_URL = "https://6c77e3dcaae6ad.lhr.life"
         const val AGENT_KEY = "org-secret-agent-key-2026"
+    }
+
+    private fun getServerUrl(): String {
+        val prefs = getSharedPreferences("mdm_prefs", Context.MODE_PRIVATE)
+        return prefs.getString("server_url", DEFAULT_SERVER_URL) ?: DEFAULT_SERVER_URL
+    }
+
+    private fun getDeviceName(): String {
+        val prefs = getSharedPreferences("mdm_prefs", Context.MODE_PRIVATE)
+        return prefs.getString("device_name", "${Build.MANUFACTURER} ${Build.MODEL}") ?: "${Build.MANUFACTURER} ${Build.MODEL}"
     }
 
     private val scheduler = Executors.newSingleThreadScheduledExecutor()
@@ -49,9 +58,10 @@ class MdmAgentService : Service() {
             val bm = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
             val battery = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
 
+            val serverUrl = getServerUrl()
             val payload = JSONObject().apply {
                 put("device_id", deviceId)
-                put("name", "${Build.MANUFACTURER} ${Build.MODEL}")
+                put("name", getDeviceName())
                 put("model", Build.MODEL)
                 put("android_version", Build.VERSION.RELEASE)
                 put("battery", battery)
@@ -59,7 +69,7 @@ class MdmAgentService : Service() {
                 put("ack_commands", JSONArray(ackIds))
             }
 
-            val conn = (URL("$SERVER_URL/api/mdm/agent/checkin").openConnection() as HttpURLConnection).apply {
+            val conn = (URL("$serverUrl/api/mdm/agent/checkin").openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
                 setRequestProperty("Content-Type", "application/json")
                 setRequestProperty("x-agent-key", AGENT_KEY)
@@ -118,7 +128,7 @@ class MdmAgentService : Service() {
             "INSTALL_APK" -> {
                 val dlPath = payload.optString("download_url", "")
                 if (dlPath.isNotEmpty()) {
-                    silentInstallApk("$SERVER_URL$dlPath")
+                    silentInstallApk("${getServerUrl()}$dlPath")
                 }
             }
         }
