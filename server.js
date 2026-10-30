@@ -82,13 +82,13 @@ function broadcastMdmEvent(evt) {
   }
 }
 
-// Auto-detect powered-off / disconnected devices when heartbeat stops (> 30s)
+// Auto-detect powered-off / disconnected devices when heartbeat stops (> 65s)
 if (!process.argv.includes('--test')) {
   setInterval(() => {
     try {
       const stale = db.prepare(`
         SELECT device_id, name, model FROM mdm_devices
-        WHERE status = 'online' AND (julianday('now') - julianday(last_seen_at)) * 86400 > 30
+        WHERE status = 'online' AND (julianday('now') - julianday(last_seen_at)) * 86400 > 65
       `).all();
       const now = new Date().toISOString();
       for (const d of stale) {

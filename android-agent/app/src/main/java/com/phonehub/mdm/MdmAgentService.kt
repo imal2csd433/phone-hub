@@ -1,5 +1,9 @@
 package com.phonehub.mdm
 
+import android.app.AlarmManager
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.app.admin.DevicePolicyManager
@@ -9,9 +13,12 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageInstaller
+import android.content.pm.ServiceInfo
 import android.os.BatteryManager
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
+import android.os.SystemClock
 import android.provider.Settings
 import org.json.JSONArray
 import org.json.JSONObject
@@ -28,9 +35,34 @@ class MdmAgentService : Service() {
         const val DEFAULT_SERVER_URL = "https://mechanics-pointer-omaha-broadcasting.trycloudflare.com"
         const val AGENT_KEY = "org-secret-agent-key-2026"
         const val ACTION_STATUS_UPDATE = "com.phonehub.mdm.STATUS_UPDATE"
+        const val ACTION_KEEP_ALIVE = "com.phonehub.mdm.KEEP_ALIVE_HEARTBEAT"
+
+        private fun getSafePrefs(ctx: Context) = try {
+            val storageCtx = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                ctx.createDeviceProtectedStorageContext()
+            } else ctx
+            storageCtx.getSharedPreferences("mdm_prefs", Context.MODE_PRIVATE)
+        } catch (_: Throwable) {
+            ctx.getSharedPreferences("mdm_prefs", Context.MODE_PRIVATE)
+        }
+
+        fun saveConfig(ctx: Context, serverUrl: String, deviceName: String) {
+            getSafePrefs(ctx).edit()
+                .putString("server_url", serverUrl)
+                .putString("device_name", deviceName)
+                .apply()
+        }
+
+        fun getSavedServerUrl(ctx: Context): String {
+            return getSafePrefs(ctx).getString("server_url", DEFAULT_SERVER_URL) ?: DEFAULT_SERVER_URL
+        }
+
+        fun getSavedDeviceName(ctx: Context): String {
+            return getSafePrefs(ctx).getString("device_name", "${Build.MANUFACTURER} ${Build.MODEL}") ?: "${Build.MANUFACTURER} ${Build.MODEL}"
+        }
 
         fun getOrCreateUniqueDeviceId(ctx: Context): String {
-            val prefs = ctx.getSharedPreferences("mdm_prefs", Context.MODE_PRIVATE)
+            val prefs = getSafePrefs(ctx)
             var id = prefs.getString("unique_device_id", null)
             if (id.isNullOrBlank()) {
                 val hwId = try { Settings.Secure.getString(ctx.contentResolver, Settings.Secure.ANDROID_ID) ?: "" } catch (_: Throwable) { "" }
@@ -45,10 +77,48 @@ class MdmAgentService : Service() {
             }
             return id
         }
+
+        fun startPersistentService(ctx: Context, isBoot: Boolean = false, isShutdown: Boolean = false) {
+            try {
+                val svc = Intent(ctx, MdmAgentService::class.java).apply {
+                    if (isBoot) putExtra("boot_completed", true)
+                    if (isShutdown) putExtra("shutdown_initiated", true)
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !isShutdown) {
+                    try {
+                        ctx.startForegroundService(svc)
+                    } catch (_: Throwable) {
+                        ctx.startService(svc)
+                    }
+                } else {
+                    ctx.startService(svc)
+                }
+            } catch (_: Throwable) {}
+        }
+
+        fun scheduleKeepAliveAlarm(ctx: Context) {
+            try {
+                val am = ctx.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+                val intent = Intent(ctx, MdmAdminReceiver::class.java).apply {
+                    action = ACTION_KEEP_ALIVE
+                }
+                val pi = PendingIntent.getBroadcast(
+                    ctx, 777, intent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+                val triggerAt = SystemClock.elapsedRealtime() + 25_000L
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    am.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerAt, pi)
+                } else {
+                    am.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerAt, pi)
+                }
+            } catch (_: Throwable) {}
+        }
     }
 
     private val scheduler = Executors.newSingleThreadScheduledExecutor()
     private var bootReported = false
+    private var wakeLock: PowerManager.WakeLock? = null
 
     private val shutdownReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -58,18 +128,10 @@ class MdmAgentService : Service() {
         }
     }
 
-    private fun getServerUrl(): String {
-        val prefs = getSharedPreferences("mdm_prefs", Context.MODE_PRIVATE)
-        return prefs.getString("server_url", DEFAULT_SERVER_URL) ?: DEFAULT_SERVER_URL
-    }
-
-    private fun getDeviceName(): String {
-        val prefs = getSharedPreferences("mdm_prefs", Context.MODE_PRIVATE)
-        return prefs.getString("device_name", "${Build.MANUFACTURER} ${Build.MODEL}") ?: "${Build.MANUFACTURER} ${Build.MODEL}"
-    }
-
     override fun onCreate() {
         super.onCreate()
+        promoteToForegroundSafely()
+        acquirePartialWakeLock()
         try {
             val filter = IntentFilter().apply {
                 addAction(Intent.ACTION_SHUTDOWN)
@@ -81,19 +143,78 @@ class MdmAgentService : Service() {
                 registerReceiver(shutdownReceiver, filter)
             }
         } catch (_: Throwable) {}
-        scheduler.scheduleAtFixedRate({ checkInWithServer() }, 0, 10, TimeUnit.SECONDS)
+        scheduleKeepAliveAlarm(this)
+        scheduler.scheduleAtFixedRate({
+            scheduleKeepAliveAlarm(this)
+            checkInWithServer()
+        }, 0, 10, TimeUnit.SECONDS)
+    }
+
+    private fun promoteToForegroundSafely() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channelId = "org_mdm_bg_channel"
+                val channel = NotificationChannel(
+                    channelId,
+                    "ระบบดูแลเครื่ององค์กร (Background)",
+                    NotificationManager.IMPORTANCE_MIN
+                ).apply {
+                    setShowBadge(false)
+                }
+                val nm = getSystemService(NotificationManager::class.java)
+                nm.createNotificationChannel(channel)
+
+                val openIntent = Intent(this, MainActivity::class.java)
+                val pi = PendingIntent.getActivity(this, 0, openIntent, PendingIntent.FLAG_IMMUTABLE)
+
+                val notif = Notification.Builder(this, channelId)
+                    .setContentTitle("Org Device Guard ทำงานเบื้องหลัง")
+                    .setContentText("ส่งสัญญาณสถานะเครื่องอัตโนมัติ")
+                    .setSmallIcon(android.R.drawable.ic_lock_idle_lock)
+                    .setContentIntent(pi)
+                    .setOngoing(true)
+                    .build()
+
+                if (Build.VERSION.SDK_INT >= 34) {
+                    startForeground(1001, notif, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+                } else {
+                    startForeground(1001, notif)
+                }
+            }
+        } catch (_: Throwable) {
+            // Falls back gracefully to normal background service if notification permission is restricted
+        }
+    }
+
+    private fun acquirePartialWakeLock() {
+        try {
+            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+            wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "OrgDeviceGuard::HeartbeatWakeLock").apply {
+                setReferenceCounted(false)
+                acquire()
+            }
+        } catch (_: Throwable) {}
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        promoteToForegroundSafely()
+        scheduleKeepAliveAlarm(this)
         if (intent?.getBooleanExtra("shutdown_initiated", false) == true) {
             scheduler.execute { checkInWithServer(isShutdown = true) }
             return START_STICKY
         }
         if (intent?.getBooleanExtra("boot_completed", false) == true) {
             bootReported = false
-            scheduler.execute { checkInWithServer() }
         }
+        scheduler.execute { checkInWithServer() }
         return START_STICKY
+    }
+
+    // ถ้าผู้ใช้ปัดแอปทิ้งจากหน้า Recent Apps ให้ปลุกตัวเองกลับมาทำงานต่อทันที
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        scheduleKeepAliveAlarm(this)
+        startPersistentService(applicationContext, isBoot = false)
+        super.onTaskRemoved(rootIntent)
     }
 
     private fun checkInWithServer(ackIds: List<Int> = emptyList(), isShutdown: Boolean = false) {
@@ -101,11 +222,11 @@ class MdmAgentService : Service() {
             val deviceId = getOrCreateUniqueDeviceId(this)
             val bm = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
             val battery = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
-            val serverUrl = getServerUrl()
+            val serverUrl = getSavedServerUrl(this)
 
             val payload = JSONObject().apply {
                 put("device_id", deviceId)
-                put("name", getDeviceName())
+                put("name", getSavedDeviceName(this))
                 put("model", Build.MODEL)
                 put("android_version", Build.VERSION.RELEASE)
                 put("battery", battery)
@@ -130,7 +251,7 @@ class MdmAgentService : Service() {
                 sendBroadcast(Intent(ACTION_STATUS_UPDATE).apply {
                     setPackage(packageName)
                     putExtra("ok", true)
-                    putExtra("msg", "✅ เชื่อมต่อสำเร็จ (${java.text.SimpleDateFormat("HH:mm:ss").format(java.util.Date())})")
+                    putExtra("msg", "✅ ทำงานเบื้องหลังตลอดเวลา (${java.text.SimpleDateFormat("HH:mm:ss").format(java.util.Date())})")
                 })
                 val respText = conn.inputStream.bufferedReader().readText()
                 val json = JSONObject(respText)
@@ -195,7 +316,7 @@ class MdmAgentService : Service() {
             "INSTALL_APK" -> {
                 val dlPath = payload.optString("download_url", "")
                 if (dlPath.isNotEmpty()) {
-                    silentInstallApk("${getServerUrl()}$dlPath")
+                    silentInstallApk("${getSavedServerUrl(this)}$dlPath")
                 }
             }
         }
@@ -227,6 +348,7 @@ class MdmAgentService : Service() {
 
     override fun onDestroy() {
         try { unregisterReceiver(shutdownReceiver) } catch (_: Throwable) {}
+        scheduleKeepAliveAlarm(this)
         super.onDestroy()
     }
 

@@ -1,5 +1,6 @@
 package com.phonehub.mdm
 
+import android.Manifest
 import android.app.Activity
 import android.app.admin.DevicePolicyManager
 import android.content.BroadcastReceiver
@@ -7,14 +8,19 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.graphics.Color
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
+import android.provider.Settings
 import android.widget.*
 
 class MainActivity : Activity() {
 
     private lateinit var connStatusText: TextView
+    private lateinit var statusView: TextView
 
     private val statusReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -30,15 +36,20 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val prefs = getSharedPreferences("mdm_prefs", Context.MODE_PRIVATE)
-        val savedUrl = prefs.getString("server_url", MdmAgentService.DEFAULT_SERVER_URL) ?: MdmAgentService.DEFAULT_SERVER_URL
-        val savedName = prefs.getString("device_name", "${Build.MANUFACTURER} ${Build.MODEL}") ?: ""
+        // Request notification permission on Android 13+ so Foreground Service notification stays permanent
+        if (Build.VERSION.SDK_INT >= 33) {
+            try {
+                if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                    requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 101)
+                }
+            } catch (_: Throwable) {}
+        }
 
-        val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-        val adminComp = ComponentName(this, MdmAdminReceiver::class.java)
-        val isOwner = try { dpm.isDeviceOwnerApp(packageName) } catch (_: Throwable) { false }
-        val isAdmin = try { dpm.isAdminActive(adminComp) } catch (_: Throwable) { false }
-        val devId = MdmAgentService.getOrCreateUniqueDeviceId(this)
+        // Automatically prompt once to disable battery optimization so service runs 24/7 with app closed
+        requestIgnoreBatteryOptimizationsIfNeeded()
+
+        val savedUrl = MdmAgentService.getSavedServerUrl(this)
+        val savedName = MdmAgentService.getSavedDeviceName(this)
 
         val scroll = ScrollView(this).apply {
             setBackgroundColor(Color.parseColor("#090D16"))
@@ -52,26 +63,22 @@ class MainActivity : Activity() {
         }
 
         val title = TextView(this).apply {
-            text = "🛡️ Org Device Guard"
-            textSize = 22f
+            text = "🛡️ Org Device Guard (24/7 Background)"
+            textSize = 20f
             setTextColor(Color.WHITE)
         }
-        val statusView = TextView(this).apply {
-            text = "รหัสเครื่อง: $devId\nสิทธิ์ควบคุม: ${when {
-                isOwner -> "✅ Device Owner (เต็มรูปแบบ)"
-                isAdmin -> "✅ Device Admin (สั่งล็อกหน้าจอได้)"
-                else -> "⚠️ ยังไม่ได้เปิดสิทธิ์ (กดปุ่มสีเทาด้านล่าง)"
-            }}"
+        statusView = TextView(this).apply {
             textSize = 13f
             setTextColor(Color.parseColor("#94A3B8"))
             setPadding(0, 16, 0, 16)
         }
+        refreshPermissionSummary()
 
         connStatusText = TextView(this).apply {
-            text = "🔄 กำลังส่งสัญญาณเข้าเซิร์ฟเวอร์..."
+            text = "🔄 กำลังส่งสัญญาณเบื้องหลังเข้าเซิร์ฟเวอร์..."
             textSize = 14f
             setTextColor(Color.parseColor("#F59E0B"))
-            setPadding(0, 0, 0, 28)
+            setPadding(0, 0, 0, 24)
         }
 
         val nameLabel = TextView(this).apply {
@@ -87,7 +94,7 @@ class MainActivity : Activity() {
         val urlLabel = TextView(this).apply {
             text = "2. URL เซิร์ฟเวอร์ควบคุม:"
             setTextColor(Color.WHITE)
-            setPadding(0, 20, 0, 0)
+            setPadding(0, 16, 0, 0)
         }
         val urlInput = EditText(this).apply {
             setText(savedUrl)
@@ -96,22 +103,33 @@ class MainActivity : Activity() {
         }
 
         val saveBtn = Button(this).apply {
-            text = "💾 บันทึก & ส่งสัญญาณเชื่อมเข้าระบบทันที"
+            text = "💾 บันทึก & รันเบื้องหลังตลอดเวลา (ปิดแอปได้เลย)"
             setOnClickListener {
                 connStatusText.text = "🔄 กำลังส่งสัญญาณไปที่เซิร์ฟเวอร์..."
                 connStatusText.setTextColor(Color.parseColor("#F59E0B"))
-                prefs.edit()
-                    .putString("server_url", urlInput.text.toString().trim().removeSuffix("/"))
-                    .putString("device_name", nameInput.text.toString().trim())
-                    .apply()
-                safeStartAgent()
+                MdmAgentService.saveConfig(
+                    this@MainActivity,
+                    urlInput.text.toString().trim().removeSuffix("/"),
+                    nameInput.text.toString().trim()
+                )
+                MdmAgentService.scheduleKeepAliveAlarm(this@MainActivity)
+                MdmAgentService.startPersistentService(this@MainActivity, isBoot = true)
+                Toast.makeText(this@MainActivity, "บันทึกแล้ว! ปัดปิดแอปหรือล็อกหน้าจอได้เลย ระบบจะทำงานเบื้องหลังต่ออัตโนมัติ", Toast.LENGTH_LONG).show()
+            }
+        }
+
+        val batteryBtn = Button(this).apply {
+            text = "⚡ อนุญาตทำงานเบื้องหลังไม่จำกัดแบต (กด 1 ครั้ง)"
+            setOnClickListener {
+                requestIgnoreBatteryOptimizationsIfNeeded(forceOpen = true)
             }
         }
 
         val adminBtn = Button(this).apply {
-            text = "🔐 เปิดสิทธิ์ Device Admin (เพื่อให้สั่งล็อกเครื่องได้)"
+            text = "🔐 เปิดสิทธิ์ Device Admin (เพื่อรับคำสั่งล็อกเครื่อง)"
             setOnClickListener {
                 try {
+                    val adminComp = ComponentName(this@MainActivity, MdmAdminReceiver::class.java)
                     val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
                         putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComp)
                         putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "อนุญาตให้องค์กรล็อกหน้าจอและจัดการเครื่องระยะไกล")
@@ -131,26 +149,52 @@ class MainActivity : Activity() {
         layout.addView(urlLabel)
         layout.addView(urlInput)
         layout.addView(saveBtn)
+        layout.addView(batteryBtn)
         layout.addView(adminBtn)
         scroll.addView(layout)
         setContentView(scroll)
 
-        safeStartAgent()
+        MdmAgentService.scheduleKeepAliveAlarm(this)
+        MdmAgentService.startPersistentService(this, isBoot = true)
     }
 
-    private fun safeStartAgent() {
+    private fun requestIgnoreBatteryOptimizationsIfNeeded(forceOpen: Boolean = false) {
         try {
-            val svc = Intent(this, MdmAgentService::class.java).apply {
-                putExtra("boot_completed", true)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+                if (!pm.isIgnoringBatteryOptimizations(packageName) || forceOpen) {
+                    val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                        data = Uri.parse("package:$packageName")
+                    }
+                    startActivity(intent)
+                } else if (forceOpen) {
+                    Toast.makeText(this, "✅ เปิดทำงานเบื้องหลังแบบไม่จำกัดแบตอยู่แล้ว", Toast.LENGTH_SHORT).show()
+                }
             }
-            startService(svc)
-        } catch (e: Throwable) {
-            connStatusText.text = "⚠️ เริ่มเซอร์วิส: ${e.localizedMessage}"
-        }
+        } catch (_: Throwable) {}
+    }
+
+    private fun refreshPermissionSummary() {
+        val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val adminComp = ComponentName(this, MdmAdminReceiver::class.java)
+        val isOwner = try { dpm.isDeviceOwnerApp(packageName) } catch (_: Throwable) { false }
+        val isAdmin = try { dpm.isAdminActive(adminComp) } catch (_: Throwable) { false }
+        val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+        val noBatLimit = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) pm.isIgnoringBatteryOptimizations(packageName) else true
+        val devId = MdmAgentService.getOrCreateUniqueDeviceId(this)
+
+        statusView.text = "รหัสเครื่อง: $devId\n" +
+            "ทำงานเบื้องหลัง 24 ชม.: ${if (noBatLimit) "✅ เปิดแล้ว (ปิดแอปก็ยังออนไลน์)" else "⚠️ กดปุ่ม 'อนุญาตทำงานเบื้องหลัง' ด้านล่าง"}\n" +
+            "สิทธิ์ควบคุมเครื่อง: ${when {
+                isOwner -> "✅ Device Owner (เต็มรูปแบบ)"
+                isAdmin -> "✅ Device Admin (สั่งล็อกหน้าจอได้)"
+                else -> "⚠️ ยังไม่ได้เปิดสิทธิ์ (กดปุ่มเปิดสิทธิ์ด้านล่าง)"
+            }}"
     }
 
     override fun onResume() {
         super.onResume()
+        refreshPermissionSummary()
         try {
             val filter = IntentFilter(MdmAgentService.ACTION_STATUS_UPDATE)
             if (Build.VERSION.SDK_INT >= 33) {

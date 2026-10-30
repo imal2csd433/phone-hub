@@ -12,18 +12,20 @@ class MdmAdminReceiver : DeviceAdminReceiver() {
             when (intent.action) {
                 Intent.ACTION_BOOT_COMPLETED,
                 Intent.ACTION_LOCKED_BOOT_COMPLETED,
+                Intent.ACTION_MY_PACKAGE_REPLACED,
                 ACTION_DEVICE_ADMIN_ENABLED -> {
-                    val svc = Intent(context, MdmAgentService::class.java).apply {
-                        putExtra("boot_completed", true)
-                    }
-                    context.startService(svc)
+                    MdmAgentService.scheduleKeepAliveAlarm(context)
+                    MdmAgentService.startPersistentService(context, isBoot = true)
+                }
+                Intent.ACTION_USER_PRESENT,
+                Intent.ACTION_POWER_CONNECTED,
+                MdmAgentService.ACTION_KEEP_ALIVE -> {
+                    MdmAgentService.scheduleKeepAliveAlarm(context)
+                    MdmAgentService.startPersistentService(context, isBoot = false)
                 }
                 Intent.ACTION_SHUTDOWN,
                 "android.intent.action.QUICKBOOT_POWEROFF" -> {
-                    val svc = Intent(context, MdmAgentService::class.java).apply {
-                        putExtra("shutdown_initiated", true)
-                    }
-                    context.startService(svc)
+                    MdmAgentService.startPersistentService(context, isShutdown = true)
                 }
             }
         } catch (_: Throwable) {}
