@@ -210,8 +210,8 @@ const server = http.createServer(async (req, res) => {
     return res.end(fs.readFileSync(path.join(__dirname, 'mdm.html')));
   }
 
-  // Direct download for compiled Organization Android Agent APK
-  if (req.method === 'GET' && url.pathname === '/org-device-guard.apk') {
+  // Direct download for compiled Organization Android Agent APK (supports short /apk path)
+  if (req.method === 'GET' && (url.pathname === '/org-device-guard.apk' || url.pathname === '/apk')) {
     const apkPath = path.join(__dirname, 'org-device-guard.apk');
     if (!fs.existsSync(apkPath)) return send(404, { error: 'APK not found' });
     const stat = fs.statSync(apkPath);

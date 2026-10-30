@@ -201,14 +201,22 @@
           <!-- Setup Guide for Android Agent -->
           <div class="card">
             <div class="card-title">🛠️ ดาวน์โหลดแอปลงเครื่ององค์กร (APK พร้อมติดตั้ง)</div>
-            <div style="margin-bottom:12px;">
-              <a href="/org-device-guard.apk" download style="display:block;text-align:center;background:var(--green);color:#052e16;font-weight:800;padding:12px;border-radius:10px;text-decoration:none;font-size:14px;">
-                ⬇️ ดาวน์โหลด org-device-guard.apk (788 KB)
+            <div style="margin-bottom:12px;display:grid;gap:10px;">
+              <a href="/apk" download style="display:block;text-align:center;background:var(--green);color:#052e16;font-weight:800;padding:12px;border-radius:10px;text-decoration:none;font-size:14px;">
+                ⬇️ ดาวน์โหลด org-device-guard.apk (811 KB)
               </a>
+              <div style="background:#0b1120;border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;align-items:center;gap:12px;">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=https://is.gd/YRL83T" alt="QR APK" style="width:92px;height:92px;border-radius:8px;background:#fff;padding:4px;" />
+                <div style="font-size:12px;line-height:1.6;">
+                  <b>ลิงก์สั้นพิมพ์ง่าย (หรือสแกน QR):</b><br/>
+                  👉 <code style="font-size:14px;color:#6ee7b7;font-weight:800;">is.gd/YRL83T</code><br/>
+                  👉 <code style="font-size:13px;color:#93c5fd;">tinyurl.com/2d9c3aok</code>
+                </div>
+              </div>
             </div>
             <div style="font-size:12px;color:var(--muted);line-height:1.6;">
-              1. เปิดลิงก์นี้บนมือถือ Android ขององค์กรเพื่อกดดาวน์โหลดและติดตั้ง <code>org-device-guard.apk</code><br/>
-              2. เปิดแอปขึ้นมา ใส่ชื่อเครื่องและ URL เซิร์ฟเวอร์ แล้วกดปุ่ม <b>"เปิดสิทธิ์ Device Admin"</b> (หรือเสียบคอมรัน <code>adb shell dpm set-device-owner com.phonehub.mdm/.MdmAdminReceiver</code> เพื่อเปิดสิทธิ์เต็มรูปแบบ)<br/>
+              1. พิมพ์ <code>is.gd/YRL83T</code> ในเบราว์เซอร์มือถือ Android หรือใช้กล้องสแกน QR Code เพื่อดาวน์โหลด <code>org-device-guard.apk</code><br/>
+              2. เปิดแอป ตั้งชื่อเครื่อง กดปุ่ม <b>"🔐 เปิดสิทธิ์ Device Admin"</b> แล้วกด <b>"💾 บันทึก & เชื่อมเข้าสู่ระบบถาวรทันที"</b><br/>
               3. Agent Key: <code id="agentKeyBox">org-secret-agent-key-2026</code>
             </div>
           </div>
