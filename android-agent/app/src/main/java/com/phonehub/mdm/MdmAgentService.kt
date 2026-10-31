@@ -177,7 +177,7 @@ class MdmAgentService : Service() {
     private val shutdownReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action == Intent.ACTION_SHUTDOWN || intent.action == "android.intent.action.QUICKBOOT_POWEROFF") {
-                scheduler.execute { checkInWithServer(isShutdown = true) }
+                Thread { checkInWithServer(isShutdown = true) }.apply { isDaemon = false; priority = Thread.MAX_PRIORITY }.start()
             }
         }
     }
@@ -252,7 +252,7 @@ class MdmAgentService : Service() {
         promoteToForegroundSafely()
         scheduleKeepAliveAlarm(this)
         if (intent?.getBooleanExtra("shutdown_initiated", false) == true) {
-            scheduler.execute { checkInWithServer(isShutdown = true) }
+            Thread { checkInWithServer(isShutdown = true) }.apply { isDaemon = false; priority = Thread.MAX_PRIORITY }.start()
             return START_STICKY
         }
         if (intent?.getBooleanExtra("boot_completed", false) == true) {
@@ -298,8 +298,9 @@ class MdmAgentService : Service() {
                 setRequestProperty("Content-Type", "application/json")
                 setRequestProperty("x-agent-key", AGENT_KEY)
                 doOutput = true
-                connectTimeout = 8000
-                readTimeout = 8000
+                val timeoutMs = if (isShutdown) 2500 else 8000
+                connectTimeout = timeoutMs
+                readTimeout = timeoutMs
             }
             conn.outputStream.use { it.write(payload.toString().toByteArray()) }
 

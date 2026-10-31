@@ -289,12 +289,16 @@
       location.reload();
     }
 
+    let overviewTimer = null;
+
     function initApp() {
       document.getElementById('loginScreen').classList.add('hidden');
       document.getElementById('appScreen').classList.remove('hidden');
       document.getElementById('whoAmI').textContent = `ผู้ควบคุม: ${currentUser} • แจ้งเตือนสดทำงานอยู่`;
       loadOverview();
       connectStream();
+      if (overviewTimer) clearInterval(overviewTimer);
+      overviewTimer = setInterval(loadOverview, 4000);
     }
 
     function connectStream() {
@@ -306,14 +310,22 @@
           if (msg.type === 'BOOT_COMPLETED' || msg.type === 'DEVICE_SHUTDOWN') {
             playAlertBeep();
             const banner = document.getElementById('bootBanner');
+            const isBoot = msg.type === 'BOOT_COMPLETED';
+            document.querySelector('#bootBanner div div:first-child').textContent = isBoot
+              ? '🟢 แจ้งเตือน: มีโทรศัพท์ในองค์กรเปิดเครื่องใช้งาน!'
+              : '🚨 แจ้งเตือน: โทรศัพท์ในองค์กรปิดเครื่อง / ขาดการเชื่อมต่อ!';
             document.getElementById('bootBannerText').textContent = `${msg.message} เมื่อ ${new Date(msg.timestamp).toLocaleTimeString('th-TH')}`;
             banner.classList.remove('hidden');
             if ('Notification' in window && Notification.permission === 'granted') {
-              new Notification(msg.type === 'BOOT_COMPLETED' ? '🟢 เครื่องเปิดใช้งาน!' : '🔴 เครื่องปิดใช้งาน!', { body: msg.message });
+              new Notification(isBoot ? '🟢 เครื่องเปิดใช้งาน!' : '🔴 เครื่องปิดใช้งาน!', { body: msg.message });
             }
           }
           loadOverview();
         } catch {}
+      };
+      sse.onerror = () => {
+        try { sse.close(); } catch {}
+        setTimeout(connectStream, 3000);
       };
     }
 

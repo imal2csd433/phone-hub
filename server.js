@@ -82,13 +82,13 @@ function broadcastMdmEvent(evt) {
   }
 }
 
-// Auto-detect powered-off / disconnected devices when heartbeat stops (> 65s)
+// Auto-detect powered-off / disconnected devices when heartbeat stops (> 25s)
 if (!process.argv.includes('--test')) {
   setInterval(() => {
     try {
       const stale = db.prepare(`
         SELECT device_id, name, model FROM mdm_devices
-        WHERE status = 'online' AND (julianday('now') - julianday(last_seen_at)) * 86400 > 65
+        WHERE status = 'online' AND (julianday('now') - julianday(last_seen_at)) * 86400 > 25
       `).all();
       const now = new Date().toISOString();
       for (const d of stale) {
@@ -98,7 +98,14 @@ if (!process.argv.includes('--test')) {
         broadcastMdmEvent({ type: 'DEVICE_SHUTDOWN', device_id: d.device_id, name: d.name, model: d.model, message: msg, timestamp: now });
       }
     } catch {}
-  }, 8000);
+  }, 4000);
+
+  // Periodic SSE keep-alive comment every 15s to prevent Render/Cloudflare proxy timeout
+  setInterval(() => {
+    for (const res of mdmClients) {
+      try { res.write(': keepalive\n\n'); } catch { mdmClients.delete(res); }
+    }
+  }, 15000);
 }
 
 try { db.exec(`ALTER TABLE devices ADD COLUMN photo TEXT DEFAULT ''`); } catch {}
