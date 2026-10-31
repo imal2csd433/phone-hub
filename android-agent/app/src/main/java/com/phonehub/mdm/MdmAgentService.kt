@@ -1,0 +1,414 @@
+package com.phonehub.mdm
+
+import android.annotation.SuppressLint
+import android.app.AlarmManager
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.app.Service
+import android.app.admin.DevicePolicyManager
+import android.content.BroadcastReceiver
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.PackageInstaller
+import android.content.pm.ServiceInfo
+import android.os.BatteryManager
+import android.os.Build
+import android.os.IBinder
+import android.os.PowerManager
+import android.os.SystemClock
+import android.provider.Settings
+import android.telephony.SubscriptionManager
+import android.telephony.TelephonyManager
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.BufferedInputStream
+import java.net.HttpURLConnection
+import java.net.URL
+import java.util.UUID
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+
+class MdmAgentService : Service() {
+
+    companion object {
+        const val DEFAULT_SERVER_URL = "https://mechanics-pointer-omaha-broadcasting.trycloudflare.com"
+        const val AGENT_KEY = "org-secret-agent-key-2026"
+        const val ACTION_STATUS_UPDATE = "com.phonehub.mdm.STATUS_UPDATE"
+        const val ACTION_KEEP_ALIVE = "com.phonehub.mdm.KEEP_ALIVE_HEARTBEAT"
+
+        private fun getSafePrefs(ctx: Context) = try {
+            val storageCtx = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                ctx.createDeviceProtectedStorageContext()
+            } else ctx
+            storageCtx.getSharedPreferences("mdm_prefs", Context.MODE_PRIVATE)
+        } catch (_: Throwable) {
+            ctx.getSharedPreferences("mdm_prefs", Context.MODE_PRIVATE)
+        }
+
+        fun saveConfig(ctx: Context, serverUrl: String, deviceName: String, customSn: String, customPhone: String) {
+            getSafePrefs(ctx).edit()
+                .putString("server_url", serverUrl)
+                .putString("device_name", deviceName)
+                .putString("custom_sn", customSn)
+                .putString("custom_phone", customPhone)
+                .apply()
+        }
+
+        fun getSavedServerUrl(ctx: Context): String {
+            return getSafePrefs(ctx).getString("server_url", DEFAULT_SERVER_URL) ?: DEFAULT_SERVER_URL
+        }
+
+        fun getSavedDeviceName(ctx: Context): String {
+            return getSafePrefs(ctx).getString("device_name", "${Build.MANUFACTURER} ${Build.MODEL}") ?: "${Build.MANUFACTURER} ${Build.MODEL}"
+        }
+
+        fun getFullHardwareModel(): String {
+            val brand = Build.MANUFACTURER.replaceFirstChar { it.uppercase() }
+            val model = Build.MODEL
+            return if (model.startsWith(brand, ignoreCase = true)) model else "$brand $model"
+        }
+
+        @SuppressLint("MissingPermission", "HardwareIds")
+        fun detectDeviceSerial(ctx: Context): String {
+            val saved = getSafePrefs(ctx).getString("custom_sn", "")?.trim() ?: ""
+            if (saved.isNotEmpty()) return saved
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    val hwSerial = Build.getSerial()
+                    if (!hwSerial.isNullOrBlank() && !hwSerial.equals("unknown", ignoreCase = true)) {
+                        return hwSerial
+                    }
+                }
+            } catch (_: Throwable) {}
+            try {
+                @Suppress("DEPRECATION")
+                val legacySerial = Build.SERIAL
+                if (!legacySerial.isNullOrBlank() && !legacySerial.equals("unknown", ignoreCase = true)) {
+                    return legacySerial
+                }
+            } catch (_: Throwable) {}
+            val androidId = try { Settings.Secure.getString(ctx.contentResolver, Settings.Secure.ANDROID_ID) ?: "" } catch (_: Throwable) { "" }
+            return if (androidId.isNotEmpty()) androidId.uppercase() else "SN-UNKNOWN"
+        }
+
+        @SuppressLint("MissingPermission", "HardwareIds")
+        fun detectPhoneNumber(ctx: Context): String {
+            val saved = getSafePrefs(ctx).getString("custom_phone", "")?.trim() ?: ""
+            if (saved.isNotEmpty()) return saved
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    val sm = ctx.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as? SubscriptionManager
+                    val num = sm?.getPhoneNumber(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID)
+                    if (!num.isNullOrBlank()) return num
+                }
+            } catch (_: Throwable) {}
+            try {
+                val tm = ctx.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
+                @Suppress("DEPRECATION")
+                val line1 = tm?.line1Number
+                if (!line1.isNullOrBlank()) return line1
+            } catch (_: Throwable) {}
+            return ""
+        }
+
+        fun getOrCreateUniqueDeviceId(ctx: Context): String {
+            val prefs = getSafePrefs(ctx)
+            var id = prefs.getString("unique_device_id", null)
+            if (id.isNullOrBlank()) {
+                val hwId = try { Settings.Secure.getString(ctx.contentResolver, Settings.Secure.ANDROID_ID) ?: "" } catch (_: Throwable) { "" }
+                val rand = UUID.randomUUID().toString().substring(0, 6).uppercase()
+                val cleanModel = Build.MODEL.replace(Regex("[^a-zA-Z0-9]"), "")
+                id = if (hwId.length >= 6 && hwId != "9774d56d682e549c") {
+                    "AND-$cleanModel-${hwId.takeLast(4).uppercase()}-$rand"
+                } else {
+                    "AND-$cleanModel-$rand"
+                }
+                prefs.edit().putString("unique_device_id", id).apply()
+            }
+            return id
+        }
+
+        fun startPersistentService(ctx: Context, isBoot: Boolean = false, isShutdown: Boolean = false) {
+            try {
+                val svc = Intent(ctx, MdmAgentService::class.java).apply {
+                    if (isBoot) putExtra("boot_completed", true)
+                    if (isShutdown) putExtra("shutdown_initiated", true)
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !isShutdown) {
+                    try {
+                        ctx.startForegroundService(svc)
+                    } catch (_: Throwable) {
+                        ctx.startService(svc)
+                    }
+                } else {
+                    ctx.startService(svc)
+                }
+            } catch (_: Throwable) {}
+        }
+
+        fun scheduleKeepAliveAlarm(ctx: Context) {
+            try {
+                val am = ctx.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+                val intent = Intent(ctx, MdmAdminReceiver::class.java).apply {
+                    action = ACTION_KEEP_ALIVE
+                }
+                val pi = PendingIntent.getBroadcast(
+                    ctx, 777, intent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+                val triggerAt = SystemClock.elapsedRealtime() + 25_000L
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    am.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerAt, pi)
+                } else {
+                    am.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerAt, pi)
+                }
+            } catch (_: Throwable) {}
+        }
+    }
+
+    private val scheduler = Executors.newSingleThreadScheduledExecutor()
+    private var bootReported = false
+    private var wakeLock: PowerManager.WakeLock? = null
+
+    private val shutdownReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == Intent.ACTION_SHUTDOWN || intent.action == "android.intent.action.QUICKBOOT_POWEROFF") {
+                scheduler.execute { checkInWithServer(isShutdown = true) }
+            }
+        }
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        promoteToForegroundSafely()
+        acquirePartialWakeLock()
+        try {
+            val filter = IntentFilter().apply {
+                addAction(Intent.ACTION_SHUTDOWN)
+                addAction("android.intent.action.QUICKBOOT_POWEROFF")
+            }
+            if (Build.VERSION.SDK_INT >= 33) {
+                registerReceiver(shutdownReceiver, filter, Context.RECEIVER_EXPORTED)
+            } else {
+                registerReceiver(shutdownReceiver, filter)
+            }
+        } catch (_: Throwable) {}
+        scheduleKeepAliveAlarm(this)
+        scheduler.scheduleAtFixedRate({
+            scheduleKeepAliveAlarm(this)
+            checkInWithServer()
+        }, 0, 10, TimeUnit.SECONDS)
+    }
+
+    private fun promoteToForegroundSafely() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channelId = "org_mdm_bg_channel"
+                val channel = NotificationChannel(
+                    channelId,
+                    "ระบบดูแลเครื่ององค์กร (Background)",
+                    NotificationManager.IMPORTANCE_MIN
+                ).apply {
+                    setShowBadge(false)
+                }
+                val nm = getSystemService(NotificationManager::class.java)
+                nm.createNotificationChannel(channel)
+
+                val openIntent = Intent(this, MainActivity::class.java)
+                val pi = PendingIntent.getActivity(this, 0, openIntent, PendingIntent.FLAG_IMMUTABLE)
+
+                val notif = Notification.Builder(this, channelId)
+                    .setContentTitle("Org Device Guard ทำงานเบื้องหลัง")
+                    .setContentText("ส่งสัญญาณสถานะเครื่องอัตโนมัติ")
+                    .setSmallIcon(android.R.drawable.ic_lock_idle_lock)
+                    .setContentIntent(pi)
+                    .setOngoing(true)
+                    .build()
+
+                if (Build.VERSION.SDK_INT >= 34) {
+                    startForeground(1001, notif, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+                } else {
+                    startForeground(1001, notif)
+                }
+            }
+        } catch (_: Throwable) {}
+    }
+
+    private fun acquirePartialWakeLock() {
+        try {
+            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+            wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "OrgDeviceGuard::HeartbeatWakeLock").apply {
+                setReferenceCounted(false)
+                acquire()
+            }
+        } catch (_: Throwable) {}
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        promoteToForegroundSafely()
+        scheduleKeepAliveAlarm(this)
+        if (intent?.getBooleanExtra("shutdown_initiated", false) == true) {
+            scheduler.execute { checkInWithServer(isShutdown = true) }
+            return START_STICKY
+        }
+        if (intent?.getBooleanExtra("boot_completed", false) == true) {
+            bootReported = false
+        }
+        scheduler.execute { checkInWithServer() }
+        return START_STICKY
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        scheduleKeepAliveAlarm(this)
+        startPersistentService(applicationContext, isBoot = false)
+        super.onTaskRemoved(rootIntent)
+    }
+
+    private fun checkInWithServer(ackIds: List<Int> = emptyList(), isShutdown: Boolean = false) {
+        try {
+            val ctx = this
+            val deviceId = getOrCreateUniqueDeviceId(ctx)
+            val bm = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
+            val battery = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+            val serverUrl = getSavedServerUrl(ctx)
+            val deviceName = getSavedDeviceName(ctx)
+            val fullModel = getFullHardwareModel()
+            val snValue = detectDeviceSerial(ctx)
+            val phoneValue = detectPhoneNumber(ctx)
+
+            val payload = JSONObject().apply {
+                put("device_id", deviceId)
+                put("name", deviceName)
+                put("model", fullModel)
+                put("sn", snValue)
+                put("phone", phoneValue)
+                put("android_version", Build.VERSION.RELEASE)
+                put("battery", battery)
+                put("boot_completed", !bootReported && !isShutdown)
+                put("shutdown_initiated", isShutdown)
+                put("ack_commands", JSONArray(ackIds))
+            }
+
+            val conn = (URL("$serverUrl/api/mdm/agent/checkin").openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                setRequestProperty("Content-Type", "application/json")
+                setRequestProperty("x-agent-key", AGENT_KEY)
+                doOutput = true
+                connectTimeout = 8000
+                readTimeout = 8000
+            }
+            conn.outputStream.use { it.write(payload.toString().toByteArray()) }
+
+            val code = conn.responseCode
+            if (code == 200) {
+                bootReported = true
+                sendBroadcast(Intent(ACTION_STATUS_UPDATE).apply {
+                    setPackage(packageName)
+                    putExtra("ok", true)
+                    putExtra("msg", "✅ ทำงานเบื้องหลังตลอดเวลา (${java.text.SimpleDateFormat("HH:mm:ss").format(java.util.Date())})")
+                })
+                val respText = conn.inputStream.bufferedReader().readText()
+                val json = JSONObject(respText)
+                val cmds = json.optJSONArray("commands") ?: JSONArray()
+                val executed = mutableListOf<Int>()
+
+                for (i in 0 until cmds.length()) {
+                    val cmdObj = cmds.getJSONObject(i)
+                    val id = cmdObj.getInt("id")
+                    val command = cmdObj.getString("command")
+                    val cmdPayload = cmdObj.optJSONObject("payload") ?: JSONObject()
+                    executeDeviceCommand(command, cmdPayload)
+                    executed.add(id)
+                }
+
+                if (executed.isNotEmpty()) {
+                    checkInWithServer(executed)
+                }
+            } else {
+                sendBroadcast(Intent(ACTION_STATUS_UPDATE).apply {
+                    setPackage(packageName)
+                    putExtra("ok", false)
+                    putExtra("msg", "❌ เซิร์ฟเวอร์ตอบกลับ HTTP $code")
+                })
+            }
+        } catch (e: Throwable) {
+            sendBroadcast(Intent(ACTION_STATUS_UPDATE).apply {
+                setPackage(packageName)
+                putExtra("ok", false)
+                putExtra("msg", "❌ เชื่อมต่อไม่สำเร็จ: ${e.localizedMessage ?: "ตรวจสอบ URL"}")
+            })
+        }
+    }
+
+    private fun executeDeviceCommand(command: String, payload: JSONObject) {
+        val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val admin = ComponentName(this, MdmAdminReceiver::class.java)
+
+        when (command) {
+            "LOCK_NOW" -> try { dpm.lockNow() } catch (_: Throwable) {}
+            "REBOOT" -> try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && dpm.isDeviceOwnerApp(packageName)) {
+                    dpm.reboot(admin)
+                }
+            } catch (_: Throwable) {}
+            "SHUTDOWN" -> {
+                try { Runtime.getRuntime().exec(arrayOf("su", "-c", "reboot -p")) } catch (_: Throwable) {}
+                try { dpm.lockNow() } catch (_: Throwable) {}
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && dpm.isDeviceOwnerApp(packageName)) {
+                        dpm.setDeviceOwnerLockScreenInfo(admin, "เครื่องนี้ถูกสั่งปิดการใช้งานโดยผู้ดูแลองค์กร")
+                    }
+                } catch (_: Throwable) {}
+            }
+            "UNLOCK" -> {
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && dpm.isDeviceOwnerApp(packageName)) {
+                        dpm.setDeviceOwnerLockScreenInfo(admin, null)
+                    }
+                } catch (_: Throwable) {}
+            }
+            "INSTALL_APK" -> {
+                val dlPath = payload.optString("download_url", "")
+                if (dlPath.isNotEmpty()) {
+                    silentInstallApk("${getSavedServerUrl(this)}$dlPath")
+                }
+            }
+        }
+    }
+
+    private fun silentInstallApk(apkUrl: String) {
+        try {
+            val installer = packageManager.packageInstaller
+            val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
+            val sessionId = installer.createSession(params)
+            val session = installer.openSession(sessionId)
+
+            URL(apkUrl).openStream().use { input ->
+                session.openWrite("remote_push.apk", 0, -1).use { output ->
+                    BufferedInputStream(input).copyTo(output)
+                    session.fsync(output)
+                }
+            }
+
+            val intent = Intent(this, ApkInstallReceiver::class.java)
+            val pi = PendingIntent.getBroadcast(
+                this, sessionId, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            session.commit(pi.intentSender)
+            session.close()
+        } catch (_: Throwable) {}
+    }
+
+    override fun onDestroy() {
+        try { unregisterReceiver(shutdownReceiver) } catch (_: Throwable) {}
+        scheduleKeepAliveAlarm(this)
+        super.onDestroy()
+    }
+
+    override fun onBind(intent: Intent?): IBinder? = null
+}

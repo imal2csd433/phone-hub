@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#090d16" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>MDM Command Center — Owner & Admin Only</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --panel: #111827;
+      --panel-2: #1e293b;
+      --border: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --green: #10b981;
+      --red: #ef4444;
+      --amber: #f59e0b;
+      --blue: #3b82f6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+    body { background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 60px; }
+    .hidden { display: none !important; }
+
+    /* Login Overlay */
+    #loginScreen {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .login-card {
+      width: 100%; max-width: 390px; background: var(--panel); border: 1px solid var(--border);
+      border-radius: 16px; padding: 28px 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+    }
+    .badge-2p {
+      display: inline-block; background: rgba(239,68,68,0.15); color: #fca5a5;
+      border: 1px solid rgba(239,68,68,0.4); font-size: 11px; font-weight: 700;
+      padding: 4px 10px; border-radius: 99px; margin-bottom: 12px; letter-spacing: 0.5px;
+    }
+    h1 { font-size: 21px; font-weight: 800; margin-bottom: 6px; }
+    .sub { font-size: 13px; color: var(--muted); margin-bottom: 20px; line-height: 1.45; }
+    label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+    input, select {
+      width: 100%; padding: 11px 13px; border-radius: 10px; border: 1px solid var(--border);
+      background: #0b1120; color: var(--text); font-size: 14px; margin-bottom: 14px; outline: none;
+    }
+    input:focus, select:focus { border-color: var(--blue); }
+    button {
+      cursor: pointer; border: none; border-radius: 10px; font-weight: 700; font-size: 13px;
+      padding: 11px 16px; transition: opacity 0.15s, transform 0.1s;
+    }
+    button:active { transform: scale(0.98); }
+    .btn-primary { width: 100%; background: var(--blue); color: #fff; font-size: 14px; padding: 12px; }
+    .btn-red { background: var(--red); color: #fff; }
+    .btn-amber { background: var(--amber); color: #090d16; }
+    .btn-green { background: var(--green); color: #052e16; }
+    .btn-ghost { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); }
+
+    /* Topbar */
+    header {
+      position: sticky; top: 0; z-index: 50; background: rgba(17,24,39,0.92); backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border); padding: 14px 18px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .pulse-dot {
+      width: 11px; height: 11px; border-radius: 50%; background: var(--green);
+      box-shadow: 0 0 12px var(--green); animation: pulse 1.8s infinite;
+    }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+    .container { max-width: 1140px; margin: 0 auto; padding: 18px; display: grid; gap: 18px; }
+    .grid-2 { display: grid; grid-template-columns: 1.55fr 1fr; gap: 18px; }
+    @media (max-width: 820px) { .grid-2 { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 18px;
+    }
+    .card-title {
+      font-size: 15px; font-weight: 800; margin-bottom: 14px; display: flex;
+      align-items: center; justify-content: space-between; gap: 8px;
+    }
+
+    /* Boot Alert Banner */
+    #bootBanner {
+      background: linear-gradient(90deg, rgba(239,68,68,0.22), rgba(245,158,11,0.18));
+      border: 1px solid var(--red); border-radius: 12px; padding: 14px 16px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+
+    /* Device Cards */
+    .device-list { display: grid; gap: 12px; }
+    .dev-item {
+      background: var(--panel-2); border: 1px solid var(--border); border-radius: 12px;
+      padding: 15px; display: grid; gap: 12px;
+    }
+    .dev-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+    .dev-name { font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+    .dev-meta { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .status-pill {
+      font-size: 11px; font-weight: 800; padding: 4px 9px; border-radius: 99px; text-transform: uppercase;
+    }
+    .st-online { background: rgba(16,185,129,0.2); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.4); }
+    .st-locked { background: rgba(239,68,68,0.2); color: #fca5a5; border: 1px solid rgba(239,68,68,0.4); }
+    .dev-actions {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(125px, 1fr)); gap: 8px;
+    }
+
+    /* Feed & Logs */
+    .log-list { max-height: 310px; overflow-y: auto; display: grid; gap: 8px; }
+    .log-row {
+      font-size: 12.5px; padding: 9px 11px; border-radius: 8px; background: #0b1120;
+      border-left: 3px solid var(--blue); display: flex; justify-content: space-between; gap: 8px;
+    }
+    .log-row.boot { border-left-color: var(--green); background: rgba(16,185,129,0.08); }
+    .log-row.cmd { border-left-color: var(--amber); }
+    .log-time { color: var(--muted); font-size: 11px; white-space: nowrap; }
+    code { background: #0b1120; padding: 2px 6px; border-radius: 5px; color: #93c5fd; font-family: monospace; font-size: 12px; }
+  </style>
+</head>
+<body>
+
+  <!-- Exclusive 2-User Login -->
+  <div id="loginScreen">
+    <form class="login-card" onsubmit="doLogin(event)">
+      <span class="badge-2p">EXCLUSIVE ACCESS: OWNER & ADMIN (2 คนเท่านั้น)</span>
+      <h1>Android MDM Command</h1>
+      <p class="sub">ระบบแจ้งเตือนเปิดเครื่องอัตโนมัติ สั่งปิด/ล็อกเครื่องระยะไกล และส่งไฟล์ APK ติดตั้งเองแบบไร้คนกด</p>
+      <label>บัญชีผู้ใช้ (Owner / Admin)</label>
+      <input id="userInp" type="text" placeholder="owner หรือ admin1" required autocomplete="username" />
+      <label>รหัสผ่าน</label>
+      <input id="passInp" type="password" placeholder="••••••••" required autocomplete="current-password" />
+      <div id="loginErr" style="color:#f87171;font-size:12px;margin-bottom:10px;"></div>
+      <button type="submit" class="btn-primary">เข้าสู่ระบบควบคุมเครื่อง</button>
+    </form>
+  </div>
+
+  <!-- Main Controller App -->
+  <div id="appScreen" class="hidden">
+    <header>
+      <div class="brand">
+        <div class="pulse-dot"></div>
+        <div>
+          <div style="font-weight:800;font-size:15px;">ORG ANDROID CONTROLLER</div>
+          <div style="font-size:11px;color:var(--muted);" id="whoAmI">เชื่อมสัญญาณแจ้งเตือนเรียลไทม์แล้ว</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn-ghost" onclick="simulateDeviceBoot()" title="จำลองสัญญาณมือถือเปิดเครื่อง">+ จำลองเครื่องเปิดใหม่</button>
+        <button class="btn-ghost" onclick="enableSoundAndNotif()" id="notifBtn">🔔 เปิดเสียงเตือน</button>
+        <button class="btn-ghost" onclick="logout()">ออก</button>
+      </div>
+    </header>
+
+    <div class="container">
+      <!-- Live Boot Alert Popup Banner -->
+      <div id="bootBanner" class="hidden">
+        <div>
+          <div style="font-weight:800;color:#fca5a5;font-size:14px;">🚨 แจ้งเตือนด่วน: มีโทรศัพท์ในองค์กรเปิดเครื่อง!</div>
+          <div id="bootBannerText" style="font-size:13px;margin-top:3px;"></div>
+        </div>
+        <button class="btn-ghost" onclick="document.getElementById('bootBanner').classList.add('hidden')">รับทราบ</button>
+      </div>
+
+      <div class="grid-2">
+        <!-- Left Column: Managed Android Fleet -->
+        <div class="card">
+          <div class="card-title">
+            <span>📱 เครื่อง Android ในองค์กร (<span id="devCount">0</span> เครื่อง)</span>
+            <button class="btn-ghost" style="padding:6px 10px;font-size:12px;" onclick="loadOverview()">รีเฟรช</button>
+          </div>
+          <div id="deviceList" class="device-list"></div>
+        </div>
+
+        <!-- Right Column: Remote APK Silent Installer + Live Boot Logs -->
+        <div style="display:grid;gap:18px;align-content:start;">
+          <!-- Remote APK Push -->
+          <div class="card">
+            <div class="card-title">📦 ส่งไฟล์ APK ติดตั้งระยะไกล (Silent Install)</div>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">
+              เลือกไฟล์ <code>.apk</code> แล้วส่งไปยังเครื่องเป้าหมาย แอป Agent (Device Owner) จะดาวน์โหลดและติดตั้งลงเครื่องเองทันทีโดยไม่ต้องมีคนกดยืนยัน
+            </p>
+            <form onsubmit="uploadAndPushApk(event)">
+              <label>เลือกเครื่องเป้าหมาย</label>
+              <select id="apkTargetSelect" required>
+                <option value="">-- เลือกเครื่องที่จะส่ง APK ไปลง --</option>
+              </select>
+              <label>เลือกไฟล์ .APK จากคอม/มือถือของคุณ</label>
+              <input type="file" id="apkFileInput" accept=".apk,application/vnd.android.package-archive" required />
+              <input type="text" id="apkPkgInput" placeholder="ชื่อ Package (เช่น com.org.internalapp - ไม่บังคับ)" />
+              <button type="submit" class="btn-primary" id="apkSubmitBtn">🚀 อัปโหลด & สั่งติดตั้งระยะไกลทันที</button>
+            </form>
+            <div id="apkListWrap" style="margin-top:14px;display:grid;gap:6px;"></div>
+          </div>
+
+          <!-- Real-time Boot & Command Logs -->
+          <div class="card">
+            <div class="card-title">⚡ ประวัติแจ้งเตือนเปิดเครื่อง & คำสั่งล่าสุด</div>
+            <div id="eventList" class="log-list"></div>
+          </div>
+
+          <!-- Setup Guide for Android Agent -->
+          <div class="card">
+            <div class="card-title">🛠️ ดาวน์โหลดแอปลงเครื่ององค์กร (APK พร้อมติดตั้ง)</div>
+            <div style="margin-bottom:12px;display:grid;gap:10px;">
+              <a href="/apk" download style="display:block;text-align:center;background:var(--green);color:#052e16;font-weight:800;padding:12px;border-radius:10px;text-decoration:none;font-size:14px;">
+                ⬇️ ดาวน์โหลด org-device-guard.apk (811 KB)
+              </a>
+              <div style="background:#0b1120;border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;align-items:center;gap:12px;">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=https://is.gd/YRL83T" alt="QR APK" style="width:92px;height:92px;border-radius:8px;background:#fff;padding:4px;" />
+                <div style="font-size:12px;line-height:1.6;">
+                  <b>ลิงก์สั้นพิมพ์ง่าย (หรือสแกน QR):</b><br/>
+                  👉 <code style="font-size:14px;color:#6ee7b7;font-weight:800;">is.gd/YRL83T</code><br/>
+                  👉 <code style="font-size:13px;color:#93c5fd;">tinyurl.com/2d9c3aok</code>
+                </div>
+              </div>
+            </div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.6;">
+              1. พิมพ์ <code>is.gd/YRL83T</code> ในเบราว์เซอร์มือถือ Android หรือใช้กล้องสแกน QR Code เพื่อดาวน์โหลด <code>org-device-guard.apk</code><br/>
+              2. เปิดแอป ตั้งชื่อเครื่อง กดปุ่ม <b>"🔐 เปิดสิทธิ์ Device Admin"</b> แล้วกด <b>"💾 บันทึก & เชื่อมเข้าสู่ระบบถาวรทันที"</b><br/>
+              3. Agent Key: <code id="agentKeyBox">org-secret-agent-key-2026</code>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let token = localStorage.getItem('mdm_token') || '';
+    let currentUser = localStorage.getItem('mdm_user') || '';
+    let sse = null;
+    let audioCtx = null;
+
+    function playAlertBeep() {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(660, audioCtx.currentTime + 0.15);
+        osc.frequency.setValueAtTime(980, audioCtx.currentTime + 0.3);
+        gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.65);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.65);
+      } catch {}
+    }
+
+    function enableSoundAndNotif() {
+      playAlertBeep();
+      if ('Notification' in window && Notification.permission !== 'granted') {
+        Notification.requestPermission();
+      }
+      document.getElementById('notifBtn').textContent = '🔔 เปิดเสียงเตือนแล้ว';
+    }
+
+    async function doLogin(e) {
+      e.preventDefault();
+      const username = document.getElementById('userInp').value.trim();
+      const password = document.getElementById('passInp').value;
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        document.getElementById('loginErr').textContent = data.error || 'เข้าสู่ระบบไม่สำเร็จ';
+        return;
+      }
+      if (data.role !== 'owner' && data.role !== 'admin') {
+        document.getElementById('loginErr').textContent = 'ไม่อนุญาต: แอปนี้จำกัดเฉพาะเจ้าขององค์กร (Owner) และแอดมิน (Admin) เท่านั้น';
+        return;
+      }
+      token = data.token;
+      currentUser = `${data.username} (${data.role.toUpperCase()})`;
+      localStorage.setItem('mdm_token', token);
+      localStorage.setItem('mdm_user', currentUser);
+      initApp();
+    }
+
+    function logout() {
+      localStorage.removeItem('mdm_token');
+      localStorage.removeItem('mdm_user');
+      if (sse) sse.close();
+      location.reload();
+    }
+
+    function initApp() {
+      document.getElementById('loginScreen').classList.add('hidden');
+      document.getElementById('appScreen').classList.remove('hidden');
+      document.getElementById('whoAmI').textContent = `ผู้ควบคุม: ${currentUser} • แจ้งเตือนสดทำงานอยู่`;
+      loadOverview();
+      connectStream();
+    }
+
+    function connectStream() {
+      if (sse) sse.close();
+      sse = new EventSource(`/api/mdm/stream?token=${encodeURIComponent(token)}`);
+      sse.onmessage = (ev) => {
+        try {
+          const msg = JSON.parse(ev.data);
+          if (msg.type === 'BOOT_COMPLETED' || msg.type === 'DEVICE_SHUTDOWN') {
+            playAlertBeep();
+            const banner = document.getElementById('bootBanner');
+            document.getElementById('bootBannerText').textContent = `${msg.message} เมื่อ ${new Date(msg.timestamp).toLocaleTimeString('th-TH')}`;
+            banner.classList.remove('hidden');
+            if ('Notification' in window && Notification.permission === 'granted') {
+              new Notification(msg.type === 'BOOT_COMPLETED' ? '🟢 เครื่องเปิดใช้งาน!' : '🔴 เครื่องปิดใช้งาน!', { body: msg.message });
+            }
+          }
+          loadOverview();
+        } catch {}
+      };
+    }
+
+    async function loadOverview() {
+      const res = await fetch('/api/mdm/overview', {
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      if (res.status === 401 || res.status === 403) return logout();
+      const data = await res.json();
+      document.getElementById('agentKeyBox').textContent = data.agent_key || '';
+      renderDevices(data.devices || [], data.apks || []);
+      renderEvents(data.events || []);
+      renderApks(data.apks || []);
+    }
+
+    function renderDevices(devices, apks) {
+      document.getElementById('devCount').textContent = devices.length;
+      const list = document.getElementById('deviceList');
+      const sel = document.getElementById('apkTargetSelect');
+      const prevVal = sel.value;
+      sel.innerHTML = '<option value="">-- เลือกเครื่องที่จะส่ง APK ไปลง --</option>' +
+        devices.map(d => `<option value="${d.device_id}">${d.name} (${d.model})</option>`).join('');
+      if (prevVal) sel.value = prevVal;
+
+      if (!devices.length) {
+        list.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:18px;text-align:center;">
+          ยังไม่มีเครื่องส่งสัญญาณเข้ามา กดปุ่ม <b>"+ จำลองเครื่องเปิดใหม่"</b> ด้านบนเพื่อทดสอบระบบแจ้งเตือนและปุ่มสั่งปิดเครื่องได้ทันที
+        </div>`;
+        return;
+      }
+
+      list.innerHTML = devices.map(d => {
+        const isOff = d.status === 'offline';
+        const pillClass = isOff ? 'st-locked' : (d.is_locked ? 'st-locked' : 'st-online');
+        const pillText = isOff ? '🔴 ปิดเครื่อง / ออฟไลน์' : (d.is_locked ? '🔒 ถูกล็อกหน้าจอ' : '🟢 เปิดเครื่องใช้งานอยู่ (ONLINE)');
+        return `
+          <div class="dev-item">
+            <div class="dev-top">
+              <div>
+                <div class="dev-name">📱 ${d.name}</div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
+                  <span style="background:#0b1120;border:1px solid var(--border);padding:3px 8px;border-radius:6px;font-size:12px;">
+                    🏷️ รุ่น: <b style="color:#93c5fd;">${d.model || '-'}</b> (Android ${d.android_version || '-'})
+                  </span>
+                  <span style="background:#0b1120;border:1px solid var(--border);padding:3px 8px;border-radius:6px;font-size:12px;">
+                    🔢 SN: <b style="color:#fcd34d;">${d.sn || 'ยังไม่ระบุ'}</b>
+                  </span>
+                  <span style="background:#0b1120;border:1px solid var(--border);padding:3px 8px;border-radius:6px;font-size:12px;">
+                    📞 เบอร์: <b style="color:#6ee7b7;">${d.phone || 'ไม่มีซิม/ไม่ระบุ'}</b>
+                  </span>
+                  <span style="background:#0b1120;border:1px solid var(--border);padding:3px 8px;border-radius:6px;font-size:12px;">
+                    🔋 แบต: <b>${d.battery}%</b>
+                  </span>
+                </div>
+                <div class="dev-meta" style="margin-top:6px;">
+                  ID ระบบ: <code>${d.device_id}</code>
+                  ${d.last_boot_at ? `<br/>🟢 เปิดเครื่องล่าสุด: <b>${new Date(d.last_boot_at).toLocaleString('th-TH')}</b>` : ''}
+                  ${d.last_seen_at ? ` • สัญญาณล่าสุด: ${new Date(d.last_seen_at).toLocaleTimeString('th-TH')}` : ''}
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span class="status-pill ${pillClass}">${pillText}</span>
+                <button class="btn-ghost" style="padding:5px 9px;font-size:11px;color:#fca5a5;border-color:rgba(239,68,68,0.4);" onclick="deleteDevice('${d.device_id}', '${d.name.replace(/'/g, '')}')" title="ลบเครื่องออกจากระบบ">🗑️ ลบ</button>
+              </div>
+            </div>
+            <div class="dev-actions">
+              <button class="btn-red" onclick="sendCmd('${d.device_id}', 'SHUTDOWN')">⏻ สั่งปิดเครื่องทันที</button>
+              <button class="btn-amber" onclick="sendCmd('${d.device_id}', 'LOCK_NOW')">🔒 ล็อกหน้าจอ</button>
+              <button class="btn-ghost" onclick="sendCmd('${d.device_id}', 'REBOOT')">🔄 รีสตาร์ทเครื่อง</button>
+              <button class="btn-green" onclick="sendCmd('${d.device_id}', 'UNLOCK')">🔓 ปลดล็อก</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function deleteDevice(deviceId, name) {
+      if (!confirm(`ยืนยันการลบเครื่อง "${name}" (${deviceId}) ออกจากระบบ?`)) return;
+      const res = await fetch('/api/mdm/devices/' + encodeURIComponent(deviceId), {
+        method: 'DELETE',
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      if (res.ok) loadOverview();
+    }
+
+    function renderEvents(events) {
+      const box = document.getElementById('eventList');
+      if (!events.length) {
+        box.innerHTML = '<div style="color:var(--muted);font-size:12px;">ยังไม่มีประวัติแจ้งเตือน</div>';
+        return;
+      }
+      box.innerHTML = events.map(e => {
+        const cls = e.event_type === 'BOOT_COMPLETED' ? 'boot' : 'cmd';
+        return `
+          <div class="log-row ${cls}">
+            <span>${e.message}</span>
+            <span class="log-time">${new Date(e.created_at).toLocaleTimeString('th-TH')}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderApks(apks) {
+      const wrap = document.getElementById('apkListWrap');
+      if (!apks.length) {
+        wrap.innerHTML = '';
+        return;
+      }
+      wrap.innerHTML = `<div style="font-size:12px;color:var(--muted);margin-top:4px;">ไฟล์ APK ในคลังพร้อมส่ง (${apks.length}):</div>` +
+        apks.map(a => `
+          <div style="display:flex;justify-content:space-between;align-items:center;background:#0b1120;padding:8px 10px;border-radius:8px;font-size:12px;">
+            <span>📦 <b>${a.filename}</b> (${(a.size_bytes / 1024).toFixed(1)} KB)</span>
+            <a href="/api/mdm/apk-file/${a.id}" style="color:#60a5fa;text-decoration:none;font-weight:700;">ดาวน์โหลด</a>
+          </div>
+        `).join('');
+    }
+
+    async function sendCmd(deviceId, command) {
+      const res = await fetch('/api/mdm/command', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({ device_id: deviceId, command })
+      });
+      if (res.ok) loadOverview();
+    }
+
+    async function uploadAndPushApk(e) {
+      e.preventDefault();
+      const target = document.getElementById('apkTargetSelect').value;
+      const file = document.getElementById('apkFileInput').files[0];
+      const pkg = document.getElementById('apkPkgInput').value.trim();
+      if (!target || !file) return;
+
+      const btn = document.getElementById('apkSubmitBtn');
+      btn.textContent = 'กำลังอัปโหลดและส่งคำสั่งติดตั้ง...';
+      btn.disabled = true;
+
+      const base64 = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.readAsDataURL(file);
+      });
+
+      const res = await fetch('/api/mdm/apks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({
+          filename: file.name,
+          package_name: pkg,
+          data_base64: base64,
+          target_device_id: target
+        })
+      });
+      btn.textContent = '🚀 อัปโหลด & สั่งติดตั้งระยะไกลทันที';
+      btn.disabled = false;
+      document.getElementById('apkFileInput').value = '';
+      if (res.ok) loadOverview();
+    }
+
+    async function simulateDeviceBoot() {
+      const num = Math.floor(100 + Math.random() * 900);
+      const key = document.getElementById('agentKeyBox').textContent || 'org-secret-agent-key-2026';
+      await fetch('/api/mdm/agent/checkin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-agent-key': key },
+        body: JSON.stringify({
+          device_id: 'AND-ORG-' + num,
+          name: 'เครื่องพนักงาน #' + num,
+          model: 'Samsung SM-A556E (Galaxy A55 5G)',
+          sn: 'R58W' + num + 'X9K',
+          phone: '081-234-' + num + '9',
+          android_version: '14',
+          battery: 94,
+          boot_completed: true
+        })
+      });
+    }
+
+    if (token) initApp();
+  </script>
+</body>
+</html>
