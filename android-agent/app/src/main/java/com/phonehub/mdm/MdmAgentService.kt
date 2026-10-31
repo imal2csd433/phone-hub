@@ -35,7 +35,7 @@ import java.util.concurrent.TimeUnit
 class MdmAgentService : Service() {
 
     companion object {
-        const val DEFAULT_SERVER_URL = "https://mechanics-pointer-omaha-broadcasting.trycloudflare.com"
+        const val DEFAULT_SERVER_URL = "https://phone-hub-1kh5.onrender.com"
         const val AGENT_KEY = "org-secret-agent-key-2026"
         const val ACTION_STATUS_UPDATE = "com.phonehub.mdm.STATUS_UPDATE"
         const val ACTION_KEEP_ALIVE = "com.phonehub.mdm.KEEP_ALIVE_HEARTBEAT"
