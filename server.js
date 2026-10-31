@@ -172,6 +172,9 @@ function getAuth(req) {
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
+  if (url.pathname.startsWith('/api/mdm/')) {
+    console.log(`[${new Date().toLocaleTimeString('th-TH')}] ${req.method} ${url.pathname}`);
+  }
   const send = (code, obj) => {
     res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify(obj));
@@ -226,7 +229,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   // Public APK binary download for Android Agent silent installer
-  if (req.method === 'GET' && url.pathname.startsWith('/api/mdm/apk-file/')) {
+  if (req.method === 'GET' && (url.pathname.startsWith('/api/mdm/apk-file/') || url.pathname.includes('/api/mdm/apk-file/'))) {
     const id = Number(url.pathname.split('/').pop());
     const apk = db.prepare('SELECT filename, data_base64 FROM mdm_apks WHERE id = ?').get(id);
     if (!apk) return send(404, { error: 'APK not found' });
@@ -240,7 +243,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   // Android Agent Heartbeat / Boot Alert endpoint (authenticated via x-agent-key or body key)
-  if (req.method === 'POST' && url.pathname === '/api/mdm/agent/checkin') {
+  if (req.method === 'POST' && (url.pathname === '/api/mdm/agent/checkin' || url.pathname.endsWith('/api/mdm/agent/checkin'))) {
     const body = await readJson(req);
     const key = req.headers['x-agent-key'] || body.agent_key || '';
     if (key !== MDM_AGENT_KEY) return send(401, { error: 'Invalid agent key' });
